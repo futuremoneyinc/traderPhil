@@ -1,0 +1,61 @@
+@model TraderPhil.V4.Web.Pages.Performance.TreasuryCard
+@{
+    var plClass = Model.LifetimePL > 0 ? "positive" : Model.LifetimePL < 0 ? "negative" : "";
+    var h = Model.Health;
+}
+
+<section class="tp-card">
+
+    <header class="tp-card-header">
+        <div>
+            <h2 class="tp-card-title">TreasuryBalancer</h2>
+            <div class="tp-card-sub">USDT reserve management · TreasuryBridge strategy</div>
+        </div>
+        <div class="text-end">
+            <div class="tp-card-sub">Lifetime P&amp;L</div>
+            <div class="tp-headline @plClass">
+                @Model.LifetimePL.ToString("+$#,##0.00;-$#,##0.00;$0.00")
+            </div>
+        </div>
+    </header>
+
+    @if (h is null)
+    {
+        <div class="tp-empty">
+            No USDT balance on file for this account yet.
+        </div>
+    }
+    else
+    {
+        var deployCls = h.DeployableUSDT < 0 ? "negative" : h.DeployableUSDT == 0 ? "" : "positive";
+
+        <div class="tp-stat-grid">
+            <div>
+                <div class="tp-stat-label">Available USDT</div>
+                <div class="tp-stat-value">@h.AvailableUSDT.ToString("$#,##0.00")</div>
+            </div>
+            <div>
+                <div class="tp-stat-label">Deployable</div>
+                <div class="tp-stat-value @deployCls">@h.DeployableUSDT.ToString("$#,##0.00")</div>
+            </div>
+            <div>
+                <div class="tp-stat-label">Reserved</div>
+                <div class="tp-stat-value">
+                    @h.ReserveUSDT.ToString("$#,##0.00")
+                    <small class="text-secondary">(@h.ReservePct.ToString("0.0")%)</small>
+                </div>
+            </div>
+            <div>
+                <div class="tp-stat-label">Active Bridges</div>
+                <div class="tp-stat-value">@h.ActiveBridges</div>
+            </div>
+        </div>
+
+        @if (Model.LifetimePL == 0 && h.ActiveBridges == 0)
+        {
+            <div class="tp-empty">
+                TreasuryBalancer hasn't opened a bridge yet — it's a cautious strategy and only fires when conditions are right.
+            </div>
+        }
+    }
+</section>

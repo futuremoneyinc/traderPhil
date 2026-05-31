@@ -1,0 +1,18 @@
+## Build output
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+
+## Secrets — real credentials stay out of git
+appsettings.json
+appsettings.*.json
+secrets/
+secrets.json
+*.pfx
+*.key
+*.pem
+
+## Logs
+*.log
+[Ll]ogs/

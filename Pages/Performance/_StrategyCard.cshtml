@@ -1,0 +1,177 @@
+@model TraderPhil.V4.Web.Pages.Performance.StrategyCard
+@{
+    var dayDetails = Model.DayDetails;
+    var plClass = Model.LifetimePL > 0 ? "positive" : Model.LifetimePL < 0 ? "negative" : "";
+}
+
+<section class="tp-card">
+
+    <header class="tp-card-header">
+        <div>
+            <h2 class="tp-card-title">@Model.DisplayName</h2>
+            <div class="tp-card-sub">Last 10 days · click any day for trade detail</div>
+        </div>
+        <div class="text-end">
+            <div class="tp-card-sub">Lifetime P&amp;L</div>
+            <div class="tp-headline @plClass">
+                @Model.LifetimePL.ToString("+$#,##0.00;-$#,##0.00;$0.00")
+            </div>
+        </div>
+    </header>
+
+    @if (!Model.HasAnyActivity)
+    {
+        <div class="tp-empty">
+            No activity yet for this strategy. Once trades start closing they'll show up here.
+        </div>
+    }
+    else
+    {
+        <div class="tp-day-grid">
+
+            @* Column headers: only render on >= md, mobile uses inline labels per row *@
+            <div class="tp-day-row d-none d-md-grid" style="cursor:default;background:transparent;border-top:0;padding-top:0;padding-bottom:0.4rem;">
+                <div class="col-label">Date</div>
+                <div class="col-label">Trades</div>
+                <div class="col-label">W / L / BE</div>
+                <div class="col-label">Volume</div>
+                <div class="col-label">P&amp;L</div>
+                <div class="col-label">Vol % · Acct %</div>
+            </div>
+
+            @foreach (var day in Model.Days)
+            {
+                var detailKey = $"{Model.StrategyKey}-{day.StatDate:yyyyMMdd}";
+                var hasDetail = dayDetails.TryGetValue(detailKey, out var detail);
+
+                var plCls = day.RealizedPL > 0 ? "positive" : day.RealizedPL < 0 ? "negative" : "muted";
+
+                // Precompute everything as plain strings so the markup below only uses @expression,
+                // never @if-else with mismatched markup/code branches (those confuse Razor's tokenizer).
+                var dateStr   = day.StatDate.ToString("MMM d");
+                var tradesCls = day.ClosedTrades == 0 ? "muted" : "";
+                var tradesStr = day.ClosedTrades.ToString();
+                var volCls    = day.DailyVolume == 0 ? "muted" : "";
+                var volStr    = day.DailyVolume == 0 ? "—" : day.DailyVolume.ToString("$#,##0.00");
+                var pnlStr    = (day.RealizedPL == 0 && day.ClosedTrades == 0)
+                                ? "—"
+                                : day.RealizedPL.ToString("+$#,##0.00;-$#,##0.00;$0.00");
+
+                var volEffStr  = day.VolumeEfficiencyPct.HasValue
+                                 ? day.VolumeEfficiencyPct.Value.ToString("0.00") + "%"
+                                 : "—";
+                var volEffCls  = day.VolumeEfficiencyPct > 0 ? "positive"
+                                 : day.VolumeEfficiencyPct < 0 ? "negative" : "muted";
+                var acctImpStr = day.AccountImpactPct.HasValue
+                                 ? day.AccountImpactPct.Value.ToString("0.00") + "%"
+                                 : "—";
+                var acctImpCls = day.AccountImpactPct > 0 ? "positive"
+                                 : day.AccountImpactPct < 0 ? "negative" : "muted";
+                var acctImpTitle = day.AccountSizeUSD is null
+                                 ? "Account size not captured for this date"
+                                 : "";
+
+                <div class="tp-day-row" role="button"
+                     aria-expanded="false"
+                     aria-controls="detail-@detailKey">
+
+                    <div>
+                        <span class="col-label d-md-none">Date</span>
+                        <span class="col-value">@dateStr</span>
+                    </div>
+
+                    <div>
+                        <span class="col-label d-md-none">Trades</span>
+                        <span class="col-value @tradesCls">@tradesStr</span>
+                    </div>
+
+                    <div>
+                        <span class="col-label d-md-none">W / L / BE</span>
+                        <span class="col-value">
+                            @if (day.ClosedTrades == 0)
+                            {
+                                <span class="muted">—</span>
+                            }
+                            else
+                            {
+                                <span class="positive">@day.Wins</span>
+                                <span class="muted"> / </span>
+                                <span class="negative">@day.Losses</span>
+                                <span class="muted"> / @day.BreakEven</span>
+                            }
+                        </span>
+                    </div>
+
+                    <div>
+                        <span class="col-label d-md-none">Volume</span>
+                        <span class="col-value @volCls">@volStr</span>
+                    </div>
+
+                    <div>
+                        <span class="col-label d-md-none">P&amp;L</span>
+                        <span class="col-value @plCls">@pnlStr</span>
+                    </div>
+
+                    <div>
+                        <span class="col-label d-md-none">Vol % · Acct %</span>
+                        <span class="col-value">
+                            <span class="@volEffCls">@volEffStr</span>
+                            <span class="muted"> · </span>
+                            <span class="@acctImpCls" title="@acctImpTitle">@acctImpStr</span>
+                        </span>
+                    </div>
+
+                    <span class="chevron d-none d-md-block">›</span>
+                </div>
+
+                <div class="tp-day-detail" id="detail-@detailKey">
+                    @if (hasDetail && detail != null && detail.Count > 0)
+                    {
+                        <table class="tp-detail-table">
+                            <thead>
+                                <tr>
+                                    <th data-sort-key="time"   data-sort-type="date">Close Time</th>
+                                    <th data-sort-key="asset"  data-sort-type="string">Asset</th>
+                                    <th data-sort-key="result" data-sort-type="string">Result</th>
+                                    <th data-sort-key="pnl"    data-sort-type="number" class="text-end">P&amp;L</th>
+                                    <th data-sort-key="entry"  data-sort-type="number" class="text-end d-none d-md-table-cell">Entry</th>
+                                    <th data-sort-key="exit"   data-sort-type="number" class="text-end d-none d-md-table-cell">Exit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @{ var idx = 0; }
+                                @foreach (var t in detail!)
+                                {
+                                    var tpl = t.RealizedPL > 0 ? "positive" : t.RealizedPL < 0 ? "negative" : "";
+                                    var pnlCell   = t.RealizedPL.ToString("+$#,##0.0000;-$#,##0.0000;$0.00");
+                                    var pnlRaw    = t.RealizedPL.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                                    var entryRaw  = t.EntryPrice.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                                    var exitRaw   = t.ClosePrice.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                                    var entryFmt  = t.EntryPrice.ToString("#,##0.########");
+                                    var exitFmt   = t.ClosePrice.ToString("#,##0.########");
+                                    var timeIso   = t.CloseExecutedDate.ToString("o");
+                                    var timeShort = t.CloseExecutedDate.ToString("HH:mm:ss");
+
+                                    <tr data-original-index="@idx">
+                                        <td data-cell="time"   data-value="@timeIso">@timeShort</td>
+                                        <td data-cell="asset"  data-value="@t.BaseAsset">@t.BaseAsset</td>
+                                        <td data-cell="result" data-value="@t.TradeResult">@t.TradeResult</td>
+                                        <td data-cell="pnl"    data-value="@pnlRaw" class="text-end @tpl">@pnlCell</td>
+                                        <td data-cell="entry"  data-value="@entryRaw" class="text-end d-none d-md-table-cell">@entryFmt</td>
+                                        <td data-cell="exit"   data-value="@exitRaw" class="text-end d-none d-md-table-cell">@exitFmt</td>
+                                    </tr>
+                                    idx++;
+                                }
+                            </tbody>
+                        </table>
+                    }
+                    else
+                    {
+                        <div class="tp-no-trades">No trades closed on this day.</div>
+                    }
+                </div>
+            }
+
+        </div>
+    }
+</section>

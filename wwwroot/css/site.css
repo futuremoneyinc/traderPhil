@@ -1,0 +1,187 @@
+/* ---------- TraderPhil base palette ---------- */
+:root {
+    --tp-bg:           #0d1117;
+    --tp-surface:      #161b22;
+    --tp-surface-2:    #1c2128;
+    --tp-border:       #30363d;
+    --tp-text:         #c9d1d9;
+    --tp-text-muted:   #8b949e;
+    --tp-accent:       #58a6ff;
+    --tp-positive:     #3fb950;
+    --tp-negative:     #f85149;
+    --tp-warning:      #d29922;
+    --tp-row-hover:    rgba(110, 118, 129, 0.10);
+}
+
+html, body {
+    background: var(--tp-bg);
+    color: var(--tp-text);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Navbar ---------- */
+.tp-navbar {
+    background: var(--tp-surface);
+    border-bottom: 1px solid var(--tp-border);
+}
+.tp-navbar .nav-link {
+    color: var(--tp-text-muted);
+    font-weight: 500;
+    padding-inline: 1rem;
+}
+.tp-navbar .nav-link:hover { color: var(--tp-text); }
+.tp-navbar .nav-link[data-active="true"] {
+    color: var(--tp-text);
+    border-bottom: 2px solid var(--tp-accent);
+}
+.tp-navbar .navbar-brand { color: var(--tp-text); }
+
+/* ---------- Cards ---------- */
+.tp-card {
+    background: var(--tp-surface);
+    border: 1px solid var(--tp-border);
+    border-radius: 0.75rem;
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+}
+.tp-card-header {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--tp-border);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.tp-card-title { font-size: 1.15rem; font-weight: 600; margin: 0; }
+.tp-card-sub   { color: var(--tp-text-muted); font-size: 0.85rem; }
+
+.tp-headline {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+.tp-headline.positive { color: var(--tp-positive); }
+.tp-headline.negative { color: var(--tp-negative); }
+
+/* ---------- Day rows ---------- */
+.tp-day-grid { display: flex; flex-direction: column; }
+
+.tp-day-row {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr 0.9fr 0.9fr 0.9fr 1fr;
+    gap: 0.5rem;
+    padding: 0.85rem 1.25rem;
+    border-top: 1px solid var(--tp-border);
+    cursor: pointer;
+    align-items: center;
+    user-select: none;
+    transition: background 120ms ease;
+}
+.tp-day-row:hover { background: var(--tp-row-hover); }
+.tp-day-row[aria-expanded="true"] { background: var(--tp-row-hover); }
+
+.tp-day-row .col-label {
+    font-size: 0.72rem;
+    color: var(--tp-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: block;
+}
+.tp-day-row .col-value { font-variant-numeric: tabular-nums; font-weight: 500; }
+.tp-day-row .col-value.positive { color: var(--tp-positive); }
+.tp-day-row .col-value.negative { color: var(--tp-negative); }
+.tp-day-row .col-value.muted    { color: var(--tp-text-muted); }
+
+.tp-day-row .chevron {
+    transition: transform 180ms ease;
+    color: var(--tp-text-muted);
+    text-align: right;
+}
+.tp-day-row[aria-expanded="true"] .chevron { transform: rotate(90deg); }
+
+/* On mobile, stack the columns into a labeled 3x2 grid */
+@@media (max-width: 767.98px) {
+    .tp-day-row {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 0.5rem 0.75rem;
+        padding: 0.85rem 1rem;
+    }
+    .tp-day-row .chevron { display: none; }
+}
+
+/* ---------- Expanded detail panel ---------- */
+.tp-day-detail {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 250ms ease;
+    background: var(--tp-surface-2);
+}
+.tp-day-detail.open { max-height: 4000px; }
+
+.tp-detail-table {
+    width: 100%;
+    margin: 0;
+    color: var(--tp-text);
+    font-size: 0.875rem;
+}
+.tp-detail-table thead th {
+    background: var(--tp-surface);
+    color: var(--tp-text-muted);
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    border-bottom: 1px solid var(--tp-border);
+    padding: 0.75rem 1rem;
+    cursor: pointer;
+    user-select: none;
+}
+.tp-detail-table thead th[data-sort-dir="asc"]::after  { content: " ▲"; color: var(--tp-accent); }
+.tp-detail-table thead th[data-sort-dir="desc"]::after { content: " ▼"; color: var(--tp-accent); }
+.tp-detail-table tbody td {
+    border-top: 1px solid var(--tp-border);
+    padding: 0.65rem 1rem;
+    font-variant-numeric: tabular-nums;
+}
+.tp-detail-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+.tp-detail-table td.positive { color: var(--tp-positive); }
+.tp-detail-table td.negative { color: var(--tp-negative); }
+
+.tp-no-trades {
+    padding: 1.25rem;
+    color: var(--tp-text-muted);
+    font-style: italic;
+}
+
+/* ---------- Empty state ---------- */
+.tp-empty {
+    padding: 1.5rem 1.25rem;
+    color: var(--tp-text-muted);
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+/* ---------- Treasury card stat grid ---------- */
+.tp-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+    padding: 1.25rem;
+}
+@@media (min-width: 576px) {
+    .tp-stat-grid { grid-template-columns: repeat(4, 1fr); }
+}
+.tp-stat-label {
+    font-size: 0.72rem;
+    color: var(--tp-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.tp-stat-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+.tp-stat-value.negative { color: var(--tp-negative); }
+.tp-stat-value.positive { color: var(--tp-positive); }

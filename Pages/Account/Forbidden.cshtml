@@ -1,0 +1,12 @@
+@page
+@model TraderPhil.V4.Web.Pages.Account.ForbiddenModel
+@{ ViewData["Title"] = "Access denied"; Layout = "_Layout"; }
+
+<div class="container py-5 text-center">
+    <h2>Account inactive or unrecognized.</h2>
+    <p class="text-secondary mt-3">
+        Your Google account isn't linked to an active TraderPhil profile.
+        Contact your administrator to request access.
+    </p>
+    <a class="btn btn-outline-light mt-3" asp-page="/Account/SignIn">Try again</a>
+</div>

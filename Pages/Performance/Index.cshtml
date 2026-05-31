@@ -1,0 +1,43 @@
+@page
+@model TraderPhil.V4.Web.Pages.Performance.IndexModel
+@{
+    ViewData["Title"] = "Performance";
+}
+
+<div class="container py-4">
+
+    @if (Model.AvailableUeis.Count == 0)
+    {
+        <div class="tp-card">
+            <div class="tp-empty">
+                Your account isn't linked to a trading profile yet. Reach out to your administrator to get access.
+            </div>
+        </div>
+    }
+    else
+    {
+        @* If the user has more than one UEI, render a small switcher. *@
+        @if (Model.AvailableUeis.Count > 1)
+        {
+            <div class="d-flex justify-content-end mb-3">
+                <form method="get" class="d-flex gap-2 align-items-center">
+                    <label class="form-label mb-0 small text-secondary" for="ueiSelect">Account</label>
+                    <select id="ueiSelect" name="uei" class="form-select form-select-sm w-auto"
+                            onchange="this.form.submit()">
+                        @foreach (var u in Model.AvailableUeis)
+                        {
+                            <option value="@u" selected="@(u == Model.CurrentUei)">UEI @u</option>
+                        }
+                    </select>
+                </form>
+            </div>
+        }
+
+        <partial name="_StrategyCard" model="Model.SymbiCoreCard" />
+
+        <partial name="_StrategyCard" model="Model.WoolChipperCard" />
+
+        <partial name="_TreasuryCard" model="Model.TreasuryCard" />
+    }
+
+</div>
