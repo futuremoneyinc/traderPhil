@@ -1,0 +1,73 @@
+@model TraderPhil.V4.Web.Pages.Onboarding.IndexModel
+@using TraderPhil.V4.Web.Models
+
+<section class="tp-ob-step tp-ob-tour">
+    <header class="tp-ob-step-head">
+        <h1 class="tp-ob-step-title">The four rooms you'll live in</h1>
+        <p class="tp-ob-step-sub">
+            The whole platform is just these. Skim them now — you'll recognise everything when you land.
+        </p>
+    </header>
+
+    <div class="tp-ob-tour-grid">
+        <article class="tp-ob-tour-card">
+            <tp-icon-tile color="green">
+                <svg viewBox="0 0 32 32" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 22 L12 15 L18 20 L27 9" />
+                    <path d="M21 9 L27 9 L27 15" />
+                </svg>
+            </tp-icon-tile>
+            <h2 class="tp-ob-tour-card-title">Performance</h2>
+            <p class="tp-ob-tour-card-body">
+                Your home base. Daily results, your Profit Ladder climbing, and how each strategy is doing —
+                at a glance.
+            </p>
+        </article>
+
+        <article class="tp-ob-tour-card">
+            <tp-icon-tile color="blue">
+                <svg viewBox="0 0 32 32" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="16" cy="16" r="11" />
+                    <path d="M16 9 L16 16 L21 19" />
+                </svg>
+            </tp-icon-tile>
+            <h2 class="tp-ob-tour-card-title">Strategies</h2>
+            <p class="tp-ob-tour-card-body">
+                Which coins TraderPhil trades and how boldly. Add a coin, tune the pace, or protect your
+                downside — it's all here.
+            </p>
+        </article>
+
+        <article class="tp-ob-tour-card">
+            <tp-icon-tile color="yellow">
+                <svg viewBox="0 0 32 32" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="4" y="9" width="24" height="15" rx="2" />
+                    <path d="M4 14 L28 14" />
+                    <circle cx="23" cy="19" r="1.6" fill="currentColor" />
+                </svg>
+            </tp-icon-tile>
+            <h2 class="tp-ob-tour-card-title">Funding</h2>
+            <p class="tp-ob-tour-card-body">
+                Deposit addresses, an emergency stop, and how to move money — the safe, boring, important stuff.
+            </p>
+        </article>
+
+        <article class="tp-ob-tour-card">
+            <tp-icon-tile color="neutral">
+                <svg viewBox="0 0 32 32" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="16" cy="12" r="5" />
+                    <path d="M6 27 C 6 21, 11 18, 16 18 C 21 18, 26 21, 26 27" />
+                </svg>
+            </tp-icon-tile>
+            <h2 class="tp-ob-tour-card-title">Account</h2>
+            <p class="tp-ob-tour-card-body">
+                Your profile, your API key, progress-report emails, and your subscription. Change anything, anytime.
+            </p>
+        </article>
+    </div>
+
+    <form method="post" asp-page-handler="Continue" class="tp-ob-actions tp-ob-actions-center">
+        <input type="hidden" name="fromStep" value="@((int)OnboardingStep.Tour)" />
+        <button type="submit" class="tp-ob-btn tp-ob-btn-primary">One last thing &rarr;</button>
+    </form>
+</section>

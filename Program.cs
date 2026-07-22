@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using TraderPhil.V4.Web.Auth;
 using TraderPhil.V4.Web.Data;
+using TraderPhil.V4.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -143,6 +144,13 @@ builder.Services.AddSingleton<IStrategyRepository, StrategyRepository>();
 builder.Services.AddSingleton<IUserSettingsRepository, UserSettingsRepository>();
 builder.Services.AddSingleton<IProfitTargetsRepository, ProfitTargetsRepository>();
 builder.Services.AddSingleton<IFundingRepository, FundingRepository>();
+builder.Services.AddSingleton<IAccountRepository, AccountRepository>();
+builder.Services.AddSingleton<ISubscriptionRepository, StubSubscriptionRepository>();
+builder.Services.AddSingleton<IOnboardingRepository, OnboardingRepository>();
+
+// -- Funding cache (deposit methods/addresses). See _Wiring_Notes.txt.
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IFundingCache, FundingCache>();
 
 // -- HTTP context accessor needed by the page model base
 builder.Services.AddHttpContextAccessor();

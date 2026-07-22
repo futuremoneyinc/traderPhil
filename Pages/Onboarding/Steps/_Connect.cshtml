@@ -1,0 +1,137 @@
+@model TraderPhil.V4.Web.Pages.Onboarding.IndexModel
+@using TraderPhil.V4.Web.Kraken
+
+<section class="tp-ob-step">
+    <header class="tp-ob-step-head">
+        <h1 class="tp-ob-step-title">Connect your Kraken account</h1>
+        <p class="tp-ob-step-sub">
+            TraderPhil trades on <em>your</em> Kraken account using an API key you create.
+            The key can trade and read balances — but we reject any key that can withdraw funds.
+            Your money never leaves your exchange.
+        </p>
+    </header>
+
+    <div class="tp-ob-connect-grid">
+        @* ---- Left: walkthrough video ---- *@
+        <div class="tp-ob-video-col">
+            <div class="tp-ob-video" data-video-src="">
+                <div class="tp-ob-video-frame">
+                    <button type="button" class="tp-ob-video-play" aria-label="Play walkthrough">
+                        <svg viewBox="0 0 64 64" width="64" height="64" aria-hidden="true">
+                            <circle cx="32" cy="32" r="30" fill="rgba(0,0,0,0.55)" stroke="currentColor" stroke-width="2"/>
+                            <path d="M26 22 L44 32 L26 42 Z" fill="currentColor"/>
+                        </svg>
+                    </button>
+                    <div class="tp-ob-video-caption">Watch: creating your key (2 min)</div>
+                </div>
+            </div>
+            <p class="tp-ob-field-help">
+                Prefer to read? The five steps are on the right — they line up with the video.
+            </p>
+        </div>
+
+        @* ---- Right: 5-step guide ---- *@
+        <ol class="tp-ob-guide">
+            <li>
+                <span class="tp-ob-guide-num">1</span>
+                <div>
+                    <div class="tp-ob-guide-title">Open Kraken's API settings</div>
+                    <div class="tp-ob-guide-body">
+                        Sign in to Kraken, then go to <strong>Settings &rarr; API</strong> and choose
+                        <strong>Create API key</strong>.
+                    </div>
+                </div>
+            </li>
+            <li>
+                <span class="tp-ob-guide-num">2</span>
+                <div>
+                    <div class="tp-ob-guide-title">Name it "TraderPhil"</div>
+                    <div class="tp-ob-guide-body">So you'll always recognise which key this is.</div>
+                </div>
+            </li>
+            <li>
+                <span class="tp-ob-guide-num">3</span>
+                <div>
+                    <div class="tp-ob-guide-title">Enable exactly these permissions</div>
+                    <div class="tp-ob-guide-body">
+                        <ul class="tp-ob-perm-list">
+                            @foreach (var perm in KrakenKeyPermissionPolicy.Required)
+                            {
+                                <li>&#10003; @KrakenKeyPermissionPolicy.DisplayName(perm)</li>
+                            }
+                        </ul>
+                        <div class="tp-ob-perm-warn">
+                            Leave <strong>Withdraw funds</strong> and <strong>Margin</strong> switched OFF.
+                            We won't accept a key that has them.
+                        </div>
+                    </div>
+                </div>
+            </li>
+            <li>
+                <span class="tp-ob-guide-num">4</span>
+                <div>
+                    <div class="tp-ob-guide-title">Generate the key</div>
+                    <div class="tp-ob-guide-body">
+                        Kraken shows you an <strong>API Key</strong> and a <strong>Private Key</strong>.
+                        Keep this tab open.
+                    </div>
+                </div>
+            </li>
+            <li>
+                <span class="tp-ob-guide-num">5</span>
+                <div>
+                    <div class="tp-ob-guide-title">Paste them below</div>
+                    <div class="tp-ob-guide-body">We'll test the key before saving anything.</div>
+                </div>
+            </li>
+        </ol>
+    </div>
+
+    @* ---- Key entry form ---- *@
+    <form method="post" asp-page-handler="SaveKey" class="tp-ob-key-form" autocomplete="off">
+        <div class="tp-form-row">
+            <label class="tp-form-label" for="obApiKey">API Key</label>
+            <input type="text" id="obApiKey" name="apiKey"
+                   class="form-control tp-form-input tp-mono" spellcheck="false" autocomplete="off" required />
+        </div>
+
+        <div class="tp-form-row">
+            <label class="tp-form-label" for="obApiSecret">Private Key (Secret)</label>
+            <div class="tp-ob-secret-wrap">
+                <input type="password" id="obApiSecret" name="apiSecret"
+                       class="form-control tp-form-input tp-mono" spellcheck="false" autocomplete="off" required />
+                <button type="button" class="tp-ob-secret-toggle" data-secret-toggle="obApiSecret" aria-label="Show or hide">Show</button>
+            </div>
+        </div>
+
+        @if (Model.LastAudit is not null)
+        {
+            <div class="tp-audit-report">
+                <div class="tp-audit-header">Permission check</div>
+                <ul class="tp-audit-list">
+                    @foreach (var req in KrakenKeyPermissionPolicy.Required)
+                    {
+                        var ok = Model.LastAudit.Granted.Contains(req);
+                        <li class="tp-audit-item @(ok ? "ok" : "bad")">
+                            <span class="tp-audit-mark">@(ok ? "✓" : "✗")</span>
+                            <span class="tp-audit-label">@KrakenKeyPermissionPolicy.DisplayName(req)</span>
+                            <span class="tp-audit-note">required</span>
+                        </li>
+                    }
+                    @foreach (var bad in Model.LastAudit.ForbiddenGranted)
+                    {
+                        <li class="tp-audit-item bad">
+                            <span class="tp-audit-mark">✗</span>
+                            <span class="tp-audit-label">@KrakenKeyPermissionPolicy.DisplayName(bad)</span>
+                            <span class="tp-audit-note">must be disabled</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <div class="tp-ob-actions">
+            <button type="submit" class="tp-ob-btn tp-ob-btn-primary">Verify &amp; connect &rarr;</button>
+        </div>
+    </form>
+</section>

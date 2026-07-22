@@ -1,0 +1,43 @@
+@model TraderPhil.V4.Web.Pages.Onboarding.IndexModel
+@using TraderPhil.V4.Web.Models
+
+<section class="tp-ob-step tp-ob-step-narrow tp-ob-lounge">
+    <div class="tp-ob-lounge-badge" aria-hidden="true">
+        <div class="tp-ob-lounge-duck"><partial name="_Duck" /></div>
+    </div>
+
+    <h1 class="tp-ob-step-title tp-text-center">Welcome to the VIP Lounge, @Model.FirstName.</h1>
+    <p class="tp-ob-step-sub tp-text-center">
+        You're connected, your ladder is built, and TraderPhil is ready to go to work.
+        This is your seat at the table — let me show you around before you take off.
+    </p>
+
+    <div class="tp-ob-lounge-points">
+        <div class="tp-ob-lounge-point">
+            <span class="tp-ob-lounge-check">&#10003;</span>
+            <div>
+                <strong>Account connected.</strong>
+                Your Kraken key passed every check.
+            </div>
+        </div>
+        <div class="tp-ob-lounge-point">
+            <span class="tp-ob-lounge-check">&#10003;</span>
+            <div>
+                <strong>Profit Ladder built.</strong>
+                Your rising targets are in place and ready to climb.
+            </div>
+        </div>
+        <div class="tp-ob-lounge-point">
+            <span class="tp-ob-lounge-check">&#10003;</span>
+            <div>
+                <strong>You're in control.</strong>
+                Everything you'll see next, you can change or pause anytime.
+            </div>
+        </div>
+    </div>
+
+    <form method="post" asp-page-handler="Continue" class="tp-ob-actions tp-ob-actions-center">
+        <input type="hidden" name="fromStep" value="@((int)OnboardingStep.Lounge)" />
+        <button type="submit" class="tp-ob-btn tp-ob-btn-primary">Take the tour &rarr;</button>
+    </form>
+</section>
