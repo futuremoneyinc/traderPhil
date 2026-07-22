@@ -11,14 +11,17 @@ public class IndexModel : TraderPhilPageModel
 {
     private readonly IPerformanceRepository _perf;
     private readonly ITreasuryRepository _treasury;
+    private readonly IProfitTargetsRepository _profitTargets;
 
     public IndexModel(
         IWebUserRepository users,
         IPerformanceRepository perf,
-        ITreasuryRepository treasury) : base(users)
+        ITreasuryRepository treasury,
+        IProfitTargetsRepository profitTargets) : base(users)
     {
         _perf = perf;
         _treasury = treasury;
+        _profitTargets = profitTargets;
     }
 
     /// <summary>The UEI in scope for this page. Defaults to the first one granted to the user.</summary>
@@ -30,6 +33,9 @@ public class IndexModel : TraderPhilPageModel
     public StrategyCard SymbiCoreCard      { get; private set; } = StrategyCard.Empty("SymbiCore", "SymbiCoreDCAcquisition");
     public StrategyCard WoolChipperCard    { get; private set; } = StrategyCard.Empty("WoolChipper", "WoolChipperV2");
     public TreasuryCard TreasuryCard       { get; private set; } = new TreasuryCard();
+    public ProfitTargetsSummary? ProfitTargets { get; private set; }
+
+    public bool HasProfitTargets => ProfitTargets != null && ProfitTargets.HasTargets;
 
     public async Task<IActionResult> OnGetAsync(int? uei = null)
     {
@@ -44,6 +50,7 @@ public class IndexModel : TraderPhilPageModel
         var denied = await AssertUeiAccessAsync(CurrentUei);
         if (denied is not null) return denied;
 
+        ProfitTargets   = await _profitTargets.GetSummaryAsync(CurrentUei);
         SymbiCoreCard   = await LoadStrategyCardAsync(CurrentUei, "SymbiCore",   "SymbiCoreDCAcquisition");
         WoolChipperCard = await LoadStrategyCardAsync(CurrentUei, "WoolChipper", "WoolChipperV2");
         TreasuryCard    = await LoadTreasuryCardAsync(CurrentUei);

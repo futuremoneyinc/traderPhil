@@ -1,12 +1,591 @@
 @page
+@using System.Globalization
+@using TraderPhil.V4.Web.Models
+@using TraderPhil.V4.Web.Pages.Strategy
 @model TraderPhil.V4.Web.Pages.Strategy.IndexModel
-@{ ViewData["Title"] = "Strategy"; }
+@{
+    ViewData["Title"] = "Strategy";
+    var ic = CultureInfo.InvariantCulture;
+}
+
+@section Styles {
+    @* bootstrap-slider, latest stable per https://github.com/seiyria/bootstrap-slider *@
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-slider@11.0.2/dist/css/bootstrap-slider.min.css" />
+}
 
 <div class="container py-4">
-    <div class="tp-card">
-        <header class="tp-card-header">
-            <h2 class="tp-card-title">Strategy</h2>
-        </header>
-        <div class="tp-empty">Strategy management coming next.</div>
-    </div>
+
+    @if (Model.FlashMessage != null)
+    {
+        var flashCls = Model.FlashKind == "error" ? "tp-flash error" : "tp-flash success";
+        <div class="@flashCls" role="status">@Model.FlashMessage</div>
+    }
+
+    @if (Model.AvailableUeis.Count == 0)
+    {
+        <div class="tp-card">
+            <div class="tp-empty">
+                Your account isn't linked to a trading profile yet. Reach out to your administrator to get access.
+            </div>
+        </div>
+    }
+    else
+    {
+        @if (Model.AvailableUeis.Count > 1)
+        {
+            <div class="d-flex justify-content-end mb-3">
+                <form method="get" class="d-flex gap-2 align-items-center">
+                    <label class="form-label mb-0 small text-secondary" for="ueiSelect">Account</label>
+                    <select id="ueiSelect" name="uei" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+                        @foreach (var u in Model.AvailableUeis)
+                        {
+                            var isSel = u == Model.CurrentUei;
+                            <option value="@u" selected="@isSel">UEI @u</option>
+                        }
+                    </select>
+                </form>
+            </div>
+        }
+
+        @* ============================================================
+           PROFIT LADDER card (per Phil's polished mockup)
+           ============================================================ *@
+
+        <section class="tp-card tp-ladder-card" id="profitTargetsCard">
+
+            <header class="tp-ladder-header">
+                <div class="tp-ladder-title-block">
+                    <div class="tp-ladder-icon" aria-hidden="true">
+                        <svg viewBox="0 0 32 32" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M8 28 L8 4" />
+                            <path d="M24 28 L24 4" />
+                            <path d="M8 22 L24 22" />
+                            <path d="M8 16 L24 16" />
+                            <path d="M8 10 L24 10" />
+                            <path d="M6 26 L12 20 L18 22 L26 12" stroke-width="2.2" />
+                            <path d="M22 12 L26 12 L26 16" stroke-width="2.2" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="tp-ladder-title">Profit Ladder</h2>
+                        <div class="tp-ladder-subtitle">Climb the ladder. Lock in profits. Recycle and repeat.</div>
+                    </div>
+                </div>
+
+                @if (Model.HasProfitTargets)
+                {
+                    <span class="tp-ladder-pill active">
+                        <span class="tp-ladder-pill-dot"></span> Active
+                    </span>
+                }
+                else
+                {
+                    <span class="tp-ladder-pill inactive">
+                        <span class="tp-ladder-pill-dot"></span> Not configured
+                    </span>
+                }
+            </header>
+
+            @if (!Model.HasProfitTargets)
+            {
+                @* ---------- EMPTY STATE: initialize form ---------- *@
+                <div class="tp-pt-init">
+                    <div class="tp-empty tp-pt-empty">
+                        No profit targets configured yet. Set up your ladder below to start taking profit.
+                    </div>
+
+                    <form method="post" asp-page-handler="InitializeProfitTargets" class="tp-strategy-form">
+                        <input type="hidden" name="uei" value="@Model.CurrentUei" />
+
+                        <div class="tp-form-row">
+                            <label class="tp-form-label">Starting profit ($)</label>
+                            <input type="hidden" name="payload.StartProfit" id="ptStartProfitValue" value="1" />
+                            <input type="text" id="ptStartProfitSlider" class="tp-lot-slider" />
+                            <div class="tp-slider-labels">
+                                <span class="tp-slider-min">$1</span>
+                                <span class="tp-slider-max">$10,000</span>
+                            </div>
+                            <div class="tp-form-help">
+                                Selected: <strong id="ptStartProfitDisplay">$1</strong>
+                            </div>
+                            <div class="tp-form-help tp-compliance-note">
+                                The first rung on your profit ladder. Subsequent rungs grow by the speed you pick below.
+                            </div>
+                        </div>
+
+                        <div class="tp-form-row">
+                            <label class="tp-form-label">Growth speed</label>
+                            <div class="tp-growth-options">
+                                <label class="tp-growth-option">
+                                    <input type="radio" name="payload.GrowthPercentage" value="0.005" />
+                                    <span class="tp-growth-card">
+                                        <span class="tp-growth-card-title">Slow</span>
+                                        <span class="tp-growth-card-sub">0.5% per level</span>
+                                    </span>
+                                </label>
+                                <label class="tp-growth-option">
+                                    <input type="radio" name="payload.GrowthPercentage" value="0.0125" checked />
+                                    <span class="tp-growth-card">
+                                        <span class="tp-growth-card-title">Medium</span>
+                                        <span class="tp-growth-card-sub">1.25% per level</span>
+                                    </span>
+                                </label>
+                                <label class="tp-growth-option">
+                                    <input type="radio" name="payload.GrowthPercentage" value="0.025" />
+                                    <span class="tp-growth-card">
+                                        <span class="tp-growth-card-title">Fast</span>
+                                        <span class="tp-growth-card-sub">2.5% per level</span>
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="tp-form-row">
+                            <label class="tp-form-label" for="ptLongTerm">Long-term profit target ($)</label>
+                            <input type="number" id="ptLongTerm" name="payload.LongTermProfitTarget"
+                                   step="1000" min="1000" max="100000000" value="1000000"
+                                   class="form-control form-control-sm tp-form-input" required />
+                            <div class="tp-form-help">
+                                Your lifetime profit goal. TraderPhil generates a target ladder that scales toward this number.
+                            </div>
+                        </div>
+
+                        <div class="tp-form-actions">
+                            <button type="submit" id="ptInitButton"
+                                    class="btn btn-primary btn-sm tp-pt-init-btn"
+                                    data-busy-text="Now Building Your Profit Ladder">
+                                <span class="tp-pt-init-btn-spinner" aria-hidden="true"></span>
+                                <span class="tp-pt-init-btn-label">Initialize profit targets</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            }
+            else
+            {
+                @* ---------- POPULATED STATE (Strategy page): compact summary + Reset ---------- *@
+                var pctStr      = Model.ProfitTargets!.ProgressPercent.ToString("0.00") + "%";
+                var totalStr    = Model.ProfitTargets.TotalCurrentProfitTarget.ToString("$#,##0.00");
+
+                <div class="tp-ladder-body">
+
+                    <div class="tp-ladder-summary-line">
+                        You are <strong class="tp-positive">@pctStr</strong> complete with your
+                        <strong class="tp-accent">@totalStr</strong> profit ladder.
+                        <a asp-page="/Performance/Index" class="tp-ladder-link">View full progress →</a>
+                    </div>
+
+                    <div class="tp-ladder-actions">
+                        <button type="button" class="btn tp-ladder-reset-btn" data-toggle-pt-reset="true">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:0.5rem; vertical-align:-3px;">
+                                <path d="M21 12a9 9 0 1 1-3.4-7" />
+                                <path d="M21 4v6h-6" />
+                            </svg>
+                            Reset Profit Ladder
+                        </button>
+                    </div>
+
+                    <div class="@Model.ProfitTargetsResetClass" id="ptResetForm">
+                        <div class="tp-pt-danger-warning">
+                            <strong>⚠ Danger zone.</strong>
+                            Resetting will permanently destroy all Profit Target settings for your account,
+                            and cannot be recovered. Please type <code>Destroy Profits</code> in the box below
+                            (case-sensitive, exactly as shown) if you wish to continue.
+                        </div>
+
+                        <form method="post" asp-page-handler="ResetProfitTargets" class="tp-strategy-form">
+                            <input type="hidden" name="uei" value="@Model.CurrentUei" />
+
+                            <div class="tp-form-row">
+                                <label class="tp-form-label" for="ptConfirmText">Confirmation</label>
+                                <input type="text" id="ptConfirmText" name="payload.ConfirmText"
+                                       class="form-control form-control-sm tp-form-input"
+                                       autocomplete="off" spellcheck="false"
+                                       placeholder="Destroy Profits" required />
+                            </div>
+
+                            <div class="tp-form-actions">
+                                <button type="submit" class="btn btn-danger btn-sm">Reset everything</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-cancel-pt-reset="true">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            }
+        </section>
+
+        @* ============================================================
+           STRATEGIES CARD
+           ============================================================ *@
+        <section class="tp-card">
+
+            <header class="tp-card-header">
+                <div>
+                    <h2 class="tp-card-title">Your strategies</h2>
+                    <div class="tp-card-sub">One per coin · TraderPhil acquires and protects automatically</div>
+                </div>
+                @{
+                    var addBtnLabel = Model.AddFormOpen ? "Cancel" : "+ Add a coin";
+                }
+                <button type="button" class="btn btn-outline-light btn-sm" data-toggle-add="true">@addBtnLabel</button>
+            </header>
+
+            @{
+                var addClass = Model.AddFormOpen ? "tp-add-form open" : "tp-add-form";
+            }
+            <div class="@addClass" id="addForm">
+                @if (Model.AddableSymbols.Count == 0)
+                {
+                    <div class="tp-empty">No coins available to add - you're already trading every supported pair.</div>
+                }
+                else
+                {
+                    var firstAddable = Model.AddableSymbols[0];
+
+                    @* Serialize the addable list so the slider can re-config when user switches coin. *@
+                    var addableJson = System.Text.Json.JsonSerializer.Serialize(
+                        Model.AddableSymbols.Select(a => new {
+                            longId      = a.LongSymbolID,
+                            shortId     = a.ShortSymbolID,
+                            baseAsset   = a.BaseAsset,
+                            orderMin    = a.LongOrderMin,
+                            lotDecimals = a.LongLotDecimals,
+                            lastPrice   = a.LongLastPrice,
+                            quoteTime   = a.LongQuoteTime,
+                            stale       = QuoteFreshness.IsStale(a.LongQuoteTime)
+                        }));
+
+                    <form method="post" asp-page-handler="Create" class="tp-strategy-form" id="addStrategyForm">
+                        <input type="hidden" name="uei" value="@Model.CurrentUei" />
+                        <input type="hidden" name="payload.ShortSymbolID" id="addShortSymbolID" value="@firstAddable.ShortSymbolID" />
+
+                        <div class="tp-form-row">
+                            <label class="tp-form-label" for="addBaseAsset">Coin</label>
+                            <select id="addBaseAsset" name="payload.LongSymbolID" class="form-select form-select-sm tp-form-input"
+                                    data-addables='@addableJson'>
+                                @foreach (var a in Model.AddableSymbols)
+                                {
+                                    <option value="@a.LongSymbolID">@a.BaseAsset</option>
+                                }
+                            </select>
+                        </div>
+
+                        <div class="tp-form-row">
+                            <label class="tp-form-label">DCA lot size</label>
+
+                            @* Hidden input that the server actually reads; slider updates this. *@
+                            <input type="hidden" name="payload.DcaLotSize" id="addLotValue" value="" />
+
+                            @* The slider is just a styled <input>, bootstrap-slider takes it over. *@
+                            <input id="addLotSlider" type="text" class="tp-lot-slider" data-slider-bind="addLotValue" />
+
+                            <div class="tp-slider-labels">
+                                <span class="tp-slider-min" id="addSliderMinLabel">$0</span>
+                                <span class="tp-slider-max" id="addSliderMaxLabel">$0</span>
+                            </div>
+
+                            <div class="tp-form-help" id="addLotSelectedHelp">
+                                Selected: <strong id="addLotSelectedAmount">—</strong> <span id="addLotSelectedUnit">@firstAddable.BaseAsset</span>
+                                <span id="addLotSelectedUsd" class="tp-form-help-usd"></span>
+                            </div>
+
+                            <div class="tp-form-help tp-compliance-note">
+                                These values are computed based on Kraken's minimum order requirements and current USD value, and are subject to change to meet compliance conditions.
+                            </div>
+
+                            <div class="tp-stale-warning" id="addStaleWarning" style="display:none">
+                                ⚠ Price quote is stale - USD estimate may be inaccurate.
+                            </div>
+                        </div>
+
+                        <div class="tp-form-row">
+                            <label class="tp-form-label">Behavior</label>
+                            <div class="tp-toggles">
+                                <label class="form-check tp-toggle">
+                                    <input class="form-check-input" type="checkbox" name="payload.AllowLongs" value="true" checked />
+                                    <span class="form-check-label">Acquire new coins (longs)</span>
+                                </label>
+                                <label class="form-check tp-toggle">
+                                    <input class="form-check-input" type="checkbox" name="payload.AllowShorts" value="true" checked />
+                                    <span class="form-check-label">Protect existing coins (shorts)</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="tp-form-row">
+                            <label class="tp-form-label" for="addOrderHours">Order shelf life</label>
+                            <select id="addOrderHours" name="payload.OrderExpirationHours" class="form-select form-select-sm tp-form-input">
+                                @foreach (var o in IndexModel.OrderShelfLifeOptions)
+                                {
+                                    var isSel = o.Hours == 24;
+                                    <option value="@o.Hours" selected="@isSel">@o.Label</option>
+                                }
+                            </select>
+                            <div class="tp-form-help">How long an unfilled order sits before TraderPhil re-prices it.</div>
+                        </div>
+
+                        <div class="tp-form-row">
+                            <label class="tp-form-label" for="addBrokerTtl">Kraken shelf life</label>
+                            <select id="addBrokerTtl" name="payload.BrokerTTLMinutes" class="form-select form-select-sm tp-form-input">
+                                @foreach (var o in IndexModel.KrakenShelfLifeOptions)
+                                {
+                                    var isSel = o.Minutes == 1440;
+                                    <option value="@o.Minutes" selected="@isSel">@o.Label</option>
+                                }
+                            </select>
+                            <div class="tp-form-help">How long Kraken keeps the order open before auto-cancelling.</div>
+                        </div>
+
+                        <div class="tp-form-actions">
+                            <button type="submit" class="btn btn-primary btn-sm">Add strategy</button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" data-cancel-add="true">Cancel</button>
+                        </div>
+                    </form>
+                }
+            </div>
+
+            @if (Model.Strategies.Count == 0 && !Model.AddFormOpen)
+            {
+                <div class="tp-empty">No active strategies yet. Click "+ Add a coin" to get started.</div>
+            }
+            else
+            {
+                <div class="tp-strategy-list">
+                    @foreach (var s in Model.Strategies)
+                    {
+                        var asset       = s.DisplayBaseAsset ?? "?";
+                        var assetUpper  = asset.ToUpperInvariant();
+                        var iconLetters = assetUpper.Length > 3 ? assetUpper.Substring(0, 3) : assetUpper;
+                        var lotStr      = s.DcaLotSize.HasValue ? s.DcaLotSize.Value.ToString("0.########") : "—";
+                        var lotForInput = s.DcaLotSize.HasValue ? s.DcaLotSize.Value.ToString("0.########", ic) : "";
+
+                        var longsOn  = s.AllowLongs == true;
+                        var shortsOn = s.AllowShorts == true;
+                        var longsCls  = longsOn  ? "tp-badge on" : "tp-badge off";
+                        var shortsCls = shortsOn ? "tp-badge on" : "tp-badge off";
+                        var longsLabel  = longsOn  ? "Acquire ✓" : "Acquire ✗";
+                        var shortsLabel = shortsOn ? "Protect ✓" : "Protect ✗";
+
+                        var orderOpt  = IndexModel.OrderShelfLifeOptions.FirstOrDefault(o => o.Hours == s.OrderExpirationHours);
+                        var orderLabel = orderOpt.Label ?? (s.OrderExpirationHours + "h");
+                        var brokerOpt  = IndexModel.KrakenShelfLifeOptions.FirstOrDefault(o => o.Minutes == s.BrokerTTLMinutes);
+                        var brokerLabel = brokerOpt.Label ?? (s.BrokerTTLMinutes + "m");
+
+                        var startEditOpen = Model.EditOpenForDCAGroupId == s.DCAGroupId;
+                        var rowCls = startEditOpen ? "tp-strategy-row editing" : "tp-strategy-row";
+
+                        var orderMinVal  = s.LongOrderMin ?? 0m;
+                        var sliderMinVal = (orderMinVal * 2m);
+                        var sliderMaxVal = (orderMinVal * 100m);
+                        var sliderStep   = (orderMinVal * 0.1m);
+                        var lastPriceStr = s.LongLastPrice.HasValue ? s.LongLastPrice.Value.ToString("0.########", ic) : "0";
+
+                        // USD helper text for current lot value
+                        var usdHelp = "";
+                        if (s.DcaLotSize.HasValue && s.LongLastPrice.HasValue)
+                        {
+                            var usdEst = s.DcaLotSize.Value * s.LongLastPrice.Value;
+                            usdHelp = " ≈ $" + usdEst.ToString("0.00") + " today";
+                        }
+                        var staleQuote = QuoteFreshness.IsStale(s.LongQuoteTime);
+
+                        <article class="@rowCls" data-row-id="strategy-@s.DCAGroupId">
+
+                            <div class="tp-strategy-icon">
+                                <span class="tp-asset-circle" data-asset="@assetUpper">@iconLetters</span>
+                            </div>
+
+                            <div class="tp-strategy-body">
+
+                                <div class="tp-strategy-display">
+                                    <div class="tp-strategy-name">
+                                        <strong>@assetUpper</strong>
+                                        <span class="tp-strategy-pair text-secondary">@s.LongSymbol · @s.ShortSymbol</span>
+                                    </div>
+                                    <div class="tp-strategy-stats">
+                                        <span class="@longsCls">@longsLabel</span>
+                                        <span class="@shortsCls">@shortsLabel</span>
+                                        <span class="tp-stat">Lot: <strong>@lotStr</strong><span class="tp-stat-usd">@usdHelp</span></span>
+                                        <span class="tp-stat">Order: <strong>@orderLabel</strong></span>
+                                        <span class="tp-stat">Kraken: <strong>@brokerLabel</strong></span>
+                                    </div>
+                                </div>
+
+                                <form method="post" asp-page-handler="Edit" class="tp-strategy-edit tp-edit-form"
+                                      data-last-price="@lastPriceStr"
+                                      data-asset="@assetUpper"
+                                      data-slider-min="@sliderMinVal.ToString("0.########", ic)"
+                                      data-slider-max="@sliderMaxVal.ToString("0.########", ic)"
+                                      data-slider-step="@sliderStep.ToString("0.########", ic)"
+                                      data-initial-value="@lotForInput">
+                                    <input type="hidden" name="uei" value="@Model.CurrentUei" />
+                                    <input type="hidden" name="dcaGroupId" value="@s.DCAGroupId" />
+
+                                    <div class="tp-form-row">
+                                        <label class="tp-form-label">DCA lot size</label>
+                                        <input type="hidden" name="payload.DcaLotSize" class="tp-edit-lot-value" value="@lotForInput" />
+                                        <input type="text" class="tp-lot-slider tp-edit-lot-slider" />
+
+                                        <div class="tp-slider-labels">
+                                            <span class="tp-slider-min tp-edit-slider-min">$0</span>
+                                            <span class="tp-slider-max tp-edit-slider-max">$0</span>
+                                        </div>
+
+                                        <div class="tp-form-help">
+                                            Selected: <strong class="tp-edit-lot-amount">—</strong> @assetUpper
+                                            <span class="tp-form-help-usd tp-edit-lot-usd"></span>
+                                        </div>
+
+                                        <div class="tp-form-help tp-compliance-note">
+                                            These values are computed based on Kraken's minimum order requirements and current USD value, and are subject to change to meet compliance conditions.
+                                        </div>
+
+                                        @if (staleQuote)
+                                        {
+                                            <div class="tp-stale-warning">⚠ Price quote is stale - USD estimate may be inaccurate.</div>
+                                        }
+                                    </div>
+
+                                    <div class="tp-form-row">
+                                        <label class="tp-form-label">Behavior</label>
+                                        <div class="tp-toggles">
+                                            @{
+                                                var lChecked = longsOn ? "checked" : "";
+                                                var sChecked = shortsOn ? "checked" : "";
+                                            }
+                                            <label class="form-check tp-toggle">
+                                                <input class="form-check-input" type="checkbox" name="payload.AllowLongs" value="true" @lChecked />
+                                                <span class="form-check-label">Acquire new coins (longs)</span>
+                                            </label>
+                                            <label class="form-check tp-toggle">
+                                                <input class="form-check-input" type="checkbox" name="payload.AllowShorts" value="true" @sChecked />
+                                                <span class="form-check-label">Protect existing coins (shorts)</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div class="tp-form-row">
+                                        <label class="tp-form-label" for="hours-@s.DCAGroupId">Order shelf life</label>
+                                        <select id="hours-@s.DCAGroupId" name="payload.OrderExpirationHours" class="form-select form-select-sm tp-form-input">
+                                            @foreach (var o in IndexModel.OrderShelfLifeOptions)
+                                            {
+                                                var isSel = o.Hours == s.OrderExpirationHours;
+                                                <option value="@o.Hours" selected="@isSel">@o.Label</option>
+                                            }
+                                        </select>
+                                    </div>
+
+                                    <div class="tp-form-row">
+                                        <label class="tp-form-label" for="ttl-@s.DCAGroupId">Kraken shelf life</label>
+                                        <select id="ttl-@s.DCAGroupId" name="payload.BrokerTTLMinutes" class="form-select form-select-sm tp-form-input">
+                                            @foreach (var o in IndexModel.KrakenShelfLifeOptions)
+                                            {
+                                                var isSel = o.Minutes == s.BrokerTTLMinutes;
+                                                <option value="@o.Minutes" selected="@isSel">@o.Label</option>
+                                            }
+                                        </select>
+                                    </div>
+
+                                    <div class="tp-form-actions">
+                                        <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm" data-cancel-edit="true">Cancel</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="tp-strategy-action">
+                                <button type="button" class="btn btn-outline-light btn-sm tp-edit-btn" data-toggle-edit="true"
+                                        aria-label="Edit @assetUpper strategy">Edit</button>
+                            </div>
+
+                        </article>
+                    }
+                </div>
+            }
+        </section>
+
+        @* ============================================================
+           TREASURY SETTINGS CARD
+           ============================================================ *@
+        @if (Model.TreasurySettings != null)
+        {
+            var ts = Model.TreasurySettings;
+            var enabledLabel = ts.TreasuryEnabled ? "Enabled" : "Disabled";
+            var enabledCls   = ts.TreasuryEnabled ? "tp-badge on" : "tp-badge off";
+            var minDeployStr = ts.TreasuryMinDeployUSDT.ToString("0.00");
+            var minDeployInput = ts.TreasuryMinDeployUSDT.ToString("0.00", ic);
+            var trailStr     = (ts.TreasuryTrailPct * 100m).ToString("0.00") + "%";
+            var tightStr     = (ts.TreasuryTightTrailPct * 100m).ToString("0.00") + "%";
+            var profitStr    = (ts.TreasuryProfitLockPct * 100m).ToString("0.00") + "%";
+            var enabledChecked = ts.TreasuryEnabled ? "checked" : "";
+            var treasuryRowCls = Model.TreasuryEditOpen ? "tp-strategy-row editing" : "tp-strategy-row";
+
+            <section class="tp-card" id="treasurySettingsCard">
+
+                <header class="tp-card-header">
+                    <div>
+                        <h2 class="tp-card-title">TreasuryBalancer settings</h2>
+                        <div class="tp-card-sub">Reserve management. Advanced tuning available via support.</div>
+                    </div>
+                    <button type="button" class="btn btn-outline-light btn-sm" data-toggle-edit-treasury="true">Edit</button>
+                </header>
+
+                <div class="@treasuryRowCls" data-row-id="treasury">
+
+                    <div class="tp-strategy-body">
+
+                        <div class="tp-strategy-display">
+                            <div class="tp-strategy-stats">
+                                <span class="@enabledCls">@enabledLabel</span>
+                                <span class="tp-stat">Min deploy: <strong>$@minDeployStr</strong></span>
+                                <span class="tp-stat">Max bridges: <strong>@ts.TreasuryMaxBridges</strong></span>
+                                <span class="tp-stat tp-stat-readonly">Trail: <strong>@trailStr</strong></span>
+                                <span class="tp-stat tp-stat-readonly">Tight: <strong>@tightStr</strong></span>
+                                <span class="tp-stat tp-stat-readonly">Profit lock: <strong>@profitStr</strong></span>
+                            </div>
+                        </div>
+
+                        <form method="post" asp-page-handler="Treasury" class="tp-strategy-edit">
+                            <input type="hidden" name="uei" value="@Model.CurrentUei" />
+
+                            <div class="tp-form-row">
+                                <label class="tp-form-label">Enabled</label>
+                                <label class="form-check tp-toggle">
+                                    <input class="form-check-input" type="checkbox" name="payload.TreasuryEnabled" value="true" @enabledChecked />
+                                    <span class="form-check-label">TreasuryBalancer is active</span>
+                                </label>
+                            </div>
+
+                            <div class="tp-form-row">
+                                <label class="tp-form-label" for="tMinDeploy">Minimum deployable USDT</label>
+                                <input type="number" id="tMinDeploy" name="payload.TreasuryMinDeployUSDT" step="0.01" min="0"
+                                       value="@minDeployInput"
+                                       class="form-control form-control-sm tp-form-input" required />
+                                <div class="tp-form-help">Wait until at least this much USDT is deployable before opening a bridge.</div>
+                            </div>
+
+                            <div class="tp-form-row">
+                                <label class="tp-form-label" for="tMaxBridges">Max active bridges</label>
+                                <input type="number" id="tMaxBridges" name="payload.TreasuryMaxBridges" step="1" min="1" max="999"
+                                       value="@ts.TreasuryMaxBridges"
+                                       class="form-control form-control-sm tp-form-input" required />
+                                <div class="tp-form-help">Cap on how many bridges TreasuryBalancer will run concurrently (1–999).</div>
+                            </div>
+
+                            <div class="tp-form-actions">
+                                <button type="submit" class="btn btn-primary btn-sm">Save</button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-cancel-edit-treasury="true">Cancel</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        }
+    }
 </div>
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap-slider@11.0.2/dist/bootstrap-slider.min.js"></script>
+    <script src="~/js/strategy.js" asp-append-version="true"></script>
+}

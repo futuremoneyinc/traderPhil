@@ -185,3 +185,1051 @@ html, body {
 }
 .tp-stat-value.negative { color: var(--tp-negative); }
 .tp-stat-value.positive { color: var(--tp-positive); }
+
+/* ============================================================
+   Strategy page
+   ============================================================ */
+
+/* Flash messages */
+.tp-flash {
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    border: 1px solid;
+}
+.tp-flash.success {
+    background: rgba(63, 185, 80, 0.10);
+    border-color: var(--tp-positive);
+    color: var(--tp-positive);
+}
+.tp-flash.error {
+    background: rgba(248, 81, 73, 0.10);
+    border-color: var(--tp-negative);
+    color: var(--tp-negative);
+}
+
+/* The list of strategy rows */
+.tp-strategy-list {
+    display: flex;
+    flex-direction: column;
+}
+
+.tp-strategy-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: start;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--tp-border);
+}
+
+.tp-strategy-icon { flex: 0 0 auto; }
+
+.tp-asset-circle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--tp-surface-2);
+    border: 1px solid var(--tp-border);
+    font-weight: 700;
+    font-size: 0.85rem;
+    color: var(--tp-text);
+    letter-spacing: 0;
+}
+/* Color hints per asset, fallback to neutral */
+.tp-asset-circle[data-asset="BTC"] { background: #f7931a; color: #fff; border-color: #f7931a; }
+.tp-asset-circle[data-asset="ETH"] { background: #627eea; color: #fff; border-color: #627eea; }
+.tp-asset-circle[data-asset="SOL"] { background: #9945ff; color: #fff; border-color: #9945ff; }
+.tp-asset-circle[data-asset="XRP"] { background: #23292f; color: #fff; border-color: #4a5159; }
+.tp-asset-circle[data-asset="LTC"] { background: #345d9d; color: #fff; border-color: #345d9d; }
+.tp-asset-circle[data-asset="ADA"] { background: #0033ad; color: #fff; border-color: #0033ad; }
+.tp-asset-circle[data-asset="BCH"] { background: #0ac18e; color: #fff; border-color: #0ac18e; }
+.tp-asset-circle[data-asset="ATO"], .tp-asset-circle[data-asset="ATOM"] { background: #2e3148; color: #fff; border-color: #2e3148; }
+.tp-asset-circle[data-asset="XTZ"] { background: #2c7df7; color: #fff; border-color: #2c7df7; }
+.tp-asset-circle[data-asset="PAX"], .tp-asset-circle[data-asset="PAXG"] { background: #b8a04c; color: #fff; border-color: #b8a04c; }
+
+.tp-strategy-body { min-width: 0; }
+
+.tp-strategy-name { margin-bottom: 0.35rem; }
+.tp-strategy-name strong { font-size: 1.05rem; margin-right: 0.5rem; }
+.tp-strategy-pair { font-size: 0.8rem; }
+
+.tp-strategy-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+.tp-stat { color: var(--tp-text-muted); }
+.tp-stat strong { color: var(--tp-text); }
+.tp-stat-usd { color: var(--tp-text-muted); font-size: 0.8rem; }
+.tp-stat-readonly { opacity: 0.7; }
+
+.tp-badge {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 0.35rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid;
+}
+.tp-badge.on  { color: var(--tp-positive); border-color: var(--tp-positive); background: rgba(63,185,80,0.08); }
+.tp-badge.off { color: var(--tp-text-muted); border-color: var(--tp-border); background: transparent; }
+
+/* Edit-mode swap: display visible by default, form hidden */
+.tp-strategy-display { display: block; }
+.tp-strategy-edit    { display: none; }
+
+.tp-strategy-row.editing .tp-strategy-display { display: none; }
+.tp-strategy-row.editing .tp-strategy-edit    { display: block; }
+
+/* Forms */
+.tp-strategy-form,
+.tp-strategy-edit {
+    padding: 0.5rem 0;
+}
+
+.tp-form-row {
+    margin-bottom: 1rem;
+}
+.tp-form-label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--tp-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 0.25rem;
+    font-weight: 600;
+}
+.tp-form-input {
+    max-width: 320px;
+}
+.tp-form-help {
+    color: var(--tp-text-muted);
+    font-size: 0.78rem;
+    margin-top: 0.25rem;
+}
+.tp-form-help-usd {
+    color: var(--tp-accent);
+    margin-left: 0.35rem;
+}
+.tp-stale-warning {
+    color: var(--tp-warning);
+    font-size: 0.78rem;
+    margin-top: 0.3rem;
+}
+
+.tp-toggles {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.3rem 0;
+}
+.tp-toggle .form-check-label {
+    color: var(--tp-text);
+    cursor: pointer;
+}
+
+.tp-form-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.tp-strategy-action { flex: 0 0 auto; }
+
+/* When a row is editing, hide the Edit button (form has its own buttons) */
+.tp-strategy-row.editing .tp-edit-btn { display: none; }
+
+/* Add-a-coin form, collapsed by default */
+.tp-add-form {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 250ms ease;
+    padding: 0 1.25rem;
+}
+.tp-add-form.open {
+    max-height: 2000px;
+    padding: 1rem 1.25rem;
+    border-top: 1px solid var(--tp-border);
+    background: var(--tp-surface-2);
+}
+
+/* Mobile reflow */
+@media (max-width: 767.98px) {
+    .tp-strategy-row {
+        grid-template-columns: auto 1fr;
+        gap: 0.75rem;
+    }
+    .tp-strategy-action {
+        grid-column: 1 / -1;
+        text-align: right;
+    }
+    .tp-strategy-stats { font-size: 0.85rem; }
+    .tp-form-input { max-width: 100%; }
+}
+
+/* ============================================================
+   bootstrap-slider dark-theme overrides
+   ============================================================ */
+
+.tp-lot-slider + .slider {
+    width: 100% !important;
+    max-width: 480px;
+    margin: 0.6rem 0 0.25rem 0;
+}
+
+/* Override bootstrap-slider's default 210px inline width so the slider
+   actually spans the available form-row width on desktop. */
+.slider.slider-horizontal {
+    width: 90% !important;
+    max-width: 480px;
+}
+
+/* The slider track */
+.slider-track {
+    background-image: linear-gradient(to bottom, var(--tp-surface-2) 0%, var(--tp-surface-2) 100%);
+    border: 1px solid var(--tp-border);
+}
+.slider-selection {
+    background-image: linear-gradient(to bottom, var(--tp-accent) 0%, var(--tp-accent) 100%);
+}
+.slider-handle {
+    background-color: var(--tp-accent);
+    background-image: none;
+    border: 2px solid var(--tp-bg);
+    box-shadow: 0 0 0 1px var(--tp-accent);
+}
+.slider-handle:hover,
+.slider.in-drag .slider-handle {
+    background-color: #79b8ff;
+    box-shadow: 0 0 0 2px var(--tp-accent);
+}
+
+/* Min/max label row under the slider - tracks the slider's 90% width */
+.tp-slider-labels {
+    display: flex;
+    justify-content: space-between;
+    color: var(--tp-text-muted);
+    font-size: 0.78rem;
+    width: 90%;
+    max-width: 480px;
+    margin-bottom: 0.4rem;
+    font-variant-numeric: tabular-nums;
+}
+.tp-slider-min, .tp-slider-max { font-weight: 500; }
+
+/* Reassuring note explaining that values may auto-adjust to meet exchange minimums */
+.tp-compliance-note {
+    font-style: italic;
+    color: var(--tp-text-muted);
+    margin-top: 0.4rem;
+    max-width: 480px;
+    line-height: 1.4;
+}
+
+/* ============================================================
+   ProfitTargets card styles
+   ============================================================ */
+
+.tp-pt-init,
+.tp-pt-summary {
+    padding: 1rem 1.25rem;
+}
+.tp-pt-empty {
+    margin-bottom: 1.25rem;
+    text-align: left;
+}
+
+/* Growth-speed radio "cards" */
+.tp-growth-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin-top: 0.3rem;
+}
+.tp-growth-option {
+    cursor: pointer;
+    margin: 0;
+}
+.tp-growth-option input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+.tp-growth-card {
+    display: inline-flex;
+    flex-direction: column;
+    padding: 0.7rem 1rem;
+    border: 1px solid var(--tp-border);
+    border-radius: 0.5rem;
+    background: var(--tp-surface-2);
+    min-width: 140px;
+    transition: border-color 120ms ease, background 120ms ease;
+}
+.tp-growth-option input[type="radio"]:checked + .tp-growth-card {
+    border-color: var(--tp-accent);
+    background: rgba(88, 166, 255, 0.10);
+}
+.tp-growth-option input[type="radio"]:focus-visible + .tp-growth-card {
+    box-shadow: 0 0 0 2px var(--tp-accent);
+}
+.tp-growth-card-title {
+    font-weight: 600;
+    color: var(--tp-text);
+    margin-bottom: 0.15rem;
+}
+.tp-growth-card-sub {
+    font-size: 0.78rem;
+    color: var(--tp-text-muted);
+}
+
+/* Danger zone — visually distinct from the safe summary above it */
+.tp-pt-danger-zone {
+    padding: 1.25rem;
+    border-top: 1px solid var(--tp-border);
+    background: rgba(248, 81, 73, 0.04);
+}
+.tp-pt-danger-warning {
+    color: var(--tp-text);
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin: 0.9rem 0 0.6rem 0;
+    padding: 0.75rem 1rem;
+    background: rgba(248, 81, 73, 0.08);
+    border: 1px solid var(--tp-negative);
+    border-radius: 0.5rem;
+}
+.tp-pt-danger-warning code {
+    background: var(--tp-surface-2);
+    padding: 0.1rem 0.4rem;
+    border-radius: 0.25rem;
+    color: var(--tp-negative);
+    font-weight: 600;
+}
+
+/* Reset form collapsed by default */
+.tp-pt-reset {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 250ms ease;
+}
+.tp-pt-reset.open {
+    max-height: 1000px;
+    margin-top: 0.6rem;
+}
+
+/* Outline-danger button if Bootstrap doesn't include it cleanly with the dark theme */
+.btn-outline-danger {
+    color: var(--tp-negative);
+    border-color: var(--tp-negative);
+    background: transparent;
+}
+.btn-outline-danger:hover,
+.btn-outline-danger:focus {
+    background: rgba(248, 81, 73, 0.10);
+    color: var(--tp-negative);
+    border-color: var(--tp-negative);
+}
+.btn-danger {
+    background: var(--tp-negative);
+    border-color: var(--tp-negative);
+    color: #fff;
+}
+.btn-danger:hover, .btn-danger:focus {
+    background: #d2342c;
+    border-color: #d2342c;
+    color: #fff;
+}
+
+/* ============================================================
+   PROFIT LADDER card — polished design per Phil's mockup
+   ============================================================ */
+
+.tp-ladder-card {
+    /* Slightly different surface tone to set it apart visually */
+    background: var(--tp-surface);
+}
+
+/* ---------- Header strip ---------- */
+
+.tp-ladder-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid var(--tp-border);
+}
+
+.tp-ladder-title-block {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+}
+
+.tp-ladder-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 0.6rem;
+    background: rgba(63, 185, 80, 0.10);
+    color: var(--tp-positive);
+}
+
+.tp-ladder-title {
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--tp-text);
+}
+.tp-ladder-subtitle {
+    color: var(--tp-text-muted);
+    font-size: 0.88rem;
+    margin-top: 0.1rem;
+}
+
+/* Active / Not configured pill */
+.tp-ladder-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.95rem;
+    border-radius: 0.4rem;
+    border: 1px solid;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+.tp-ladder-pill-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: currentColor;
+}
+.tp-ladder-pill.active {
+    color: var(--tp-positive);
+    border-color: rgba(63, 185, 80, 0.45);
+    background: rgba(63, 185, 80, 0.08);
+}
+.tp-ladder-pill.inactive {
+    color: var(--tp-text-muted);
+    border-color: var(--tp-border);
+    background: var(--tp-surface-2);
+}
+
+/* ---------- Body container ---------- */
+
+.tp-ladder-body {
+    padding: 1.5rem;
+}
+
+/* ---------- Progress headline row ---------- */
+
+.tp-ladder-progress-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1.2rem;
+}
+.tp-ladder-progress-block {
+    text-align: center;
+    flex: 0 0 auto;
+}
+.tp-ladder-progress-current { text-align: center; flex: 1; }
+.tp-ladder-progress-goal    { text-align: right; }
+.tp-ladder-progress-label {
+    color: var(--tp-text-muted);
+    font-size: 0.88rem;
+    margin-bottom: 0.25rem;
+}
+.tp-ladder-progress-current .tp-ladder-progress-value {
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--tp-positive);
+    line-height: 1;
+}
+.tp-ladder-progress-goal .tp-ladder-progress-value {
+    font-size: 1.9rem;
+    font-weight: 700;
+    color: var(--tp-accent);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Track + ticks + trophy ---------- */
+
+.tp-ladder-track-wrap {
+    margin: 1.5rem 0 2rem 0;
+}
+
+.tp-ladder-track {
+    position: relative;
+    height: 38px;
+    background: var(--tp-surface-2);
+    border: 1px solid var(--tp-border);
+    border-radius: 999px;
+    overflow: visible;
+}
+
+.tp-ladder-track-fill {
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    background: linear-gradient(90deg, #2ea043 0%, #3fb950 100%);
+    border-radius: 999px;
+    transition: width 600ms cubic-bezier(0.16, 1, 0.3, 1);
+    min-width: 38px;  /* keeps the round head visible even at 0% */
+}
+
+/* Dotted tick marks at 25/50/75% */
+.tp-ladder-tick {
+    position: absolute;
+    top: 6px; bottom: 6px;
+    width: 0;
+    border-left: 2px dashed rgba(255, 255, 255, 0.18);
+    pointer-events: none;
+    transform: translateX(-1px);
+}
+
+/* Trophy badge at the goal */
+.tp-ladder-trophy {
+    position: absolute;
+    right: -3px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: var(--tp-accent);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 4px var(--tp-surface), 0 4px 16px rgba(88, 166, 255, 0.45);
+    z-index: 2;
+}
+
+/* Axis labels below the track */
+.tp-ladder-axis {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.85rem;
+    font-variant-numeric: tabular-nums;
+}
+.tp-ladder-axis-stop {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    font-size: 0.92rem;
+}
+.tp-ladder-axis-start {
+    align-items: flex-start;
+    text-align: left;
+}
+.tp-ladder-axis-goal {
+    align-items: flex-end;
+    text-align: right;
+}
+.tp-ladder-axis-value {
+    color: var(--tp-text);
+    font-weight: 600;
+}
+.tp-ladder-axis-goal .tp-ladder-axis-value {
+    color: var(--tp-accent);
+}
+.tp-ladder-axis-pct {
+    color: var(--tp-text-muted);
+    font-size: 0.82rem;
+    margin-top: 0.15rem;
+}
+.tp-ladder-axis-goal .tp-ladder-axis-pct {
+    color: var(--tp-accent);
+}
+
+/* ---------- Stat tiles row ---------- */
+
+.tp-ladder-tiles {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0;
+    border: 1px solid var(--tp-border);
+    border-radius: 0.75rem;
+    overflow: hidden;
+    background: var(--tp-surface-2);
+}
+.tp-ladder-tile {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.15rem;
+    border-right: 1px solid var(--tp-border);
+}
+.tp-ladder-tile:last-child { border-right: none; }
+
+.tp-ladder-tile-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 0.55rem;
+    flex: 0 0 auto;
+}
+.tp-ladder-tile-icon-targets   { background: rgba(63, 185, 80, 0.10); color: var(--tp-positive); }
+.tp-ladder-tile-icon-available { background: rgba(63, 185, 80, 0.10); color: var(--tp-positive); }
+.tp-ladder-tile-icon-consumed  { background: rgba(210, 153, 34, 0.14); color: var(--tp-warning); }
+.tp-ladder-tile-icon-range     { background: rgba(88, 166, 255, 0.12); color: var(--tp-accent); }
+
+.tp-ladder-tile-label {
+    font-size: 0.82rem;
+    color: var(--tp-text-muted);
+    margin-bottom: 0.1rem;
+}
+.tp-ladder-tile-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: var(--tp-text);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+.tp-ladder-tile-value-sm {
+    /* For the Range tile which holds a longer string */
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* ---------- Reset button styled to match mockup ---------- */
+
+.tp-ladder-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+.tp-ladder-reset-btn {
+    color: var(--tp-negative);
+    border: 1.5px solid var(--tp-negative);
+    background: transparent;
+    padding: 0.65rem 1.5rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+}
+.tp-ladder-reset-btn:hover, .tp-ladder-reset-btn:focus {
+    background: rgba(248, 81, 73, 0.10);
+    color: var(--tp-negative);
+    border-color: var(--tp-negative);
+}
+
+/* ---------- Mobile reflow ---------- */
+
+@media (max-width: 767.98px) {
+    .tp-ladder-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.85rem;
+    }
+    .tp-ladder-progress-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .tp-ladder-progress-goal { text-align: center; }
+    .tp-ladder-progress-current .tp-ladder-progress-value,
+    .tp-ladder-progress-goal .tp-ladder-progress-value {
+        font-size: 1.5rem;
+    }
+    .tp-ladder-tiles {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .tp-ladder-tile {
+        border-right: 1px solid var(--tp-border);
+        border-bottom: 1px solid var(--tp-border);
+    }
+    .tp-ladder-tile:nth-child(2n) { border-right: none; }
+    .tp-ladder-tile:nth-last-child(-n+2) { border-bottom: none; }
+    .tp-ladder-axis-value { font-size: 0.82rem; }
+    .tp-ladder-axis-pct { font-size: 0.72rem; }
+}
+
+/* Collapse the progress visualization when the reset form is open */
+.tp-ladder-viz {
+    max-height: 2000px;
+    overflow: hidden;
+    transition: max-height 350ms cubic-bezier(0.4, 0.0, 0.2, 1),
+                opacity 250ms ease,
+                margin 250ms ease;
+    opacity: 1;
+}
+.tp-ladder-viz.collapsed {
+    max-height: 0;
+    opacity: 0;
+    margin-bottom: 0;
+}
+
+/* Center the "Your Progress" headline and right-align "Cumulative Target" - matches mockup */
+.tp-ladder-progress-row {
+    position: relative;
+}
+.tp-ladder-progress-current {
+    width: 100%;
+    text-align: center;
+}
+.tp-ladder-progress-goal {
+    position: absolute;
+    right: 0;
+    top: 0;
+    text-align: right;
+}
+
+/* On mobile, stack them */
+@media (max-width: 767.98px) {
+    .tp-ladder-progress-goal {
+        position: static;
+        text-align: center;
+        margin-top: 0.5rem;
+    }
+}
+
+/* ============================================================
+   Initialize Profit Targets — busy state
+   ============================================================ */
+
+.tp-pt-init-btn {
+    position: relative;
+    transition: background 200ms ease, opacity 200ms ease;
+}
+
+.tp-pt-init-btn .tp-pt-init-btn-spinner {
+    display: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: #fff;
+    margin-right: 0.55rem;
+    vertical-align: -2px;
+    animation: tp-spin 700ms linear infinite;
+}
+
+.tp-pt-init-btn.busy .tp-pt-init-btn-spinner {
+    display: inline-block;
+}
+
+/* Disabled state — we want it to still LOOK like the primary button so the
+   user sees their click registered, just not interactive. Override Bootstrap's
+   default opacity so the spinner and label stay crisp. */
+.tp-pt-init-btn.busy,
+.tp-pt-init-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.95;
+}
+.tp-pt-init-btn.busy:hover,
+.tp-pt-init-btn:disabled:hover {
+    /* Suppress Bootstrap's hover lift while busy */
+    transform: none;
+}
+
+@keyframes tp-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================================
+   Strategy page — compact Profit Ladder summary
+   ============================================================ */
+
+.tp-ladder-summary-line {
+    font-size: 1.05rem;
+    line-height: 1.5;
+    color: var(--tp-text);
+    padding: 0.5rem 0 1rem 0;
+}
+.tp-ladder-summary-line strong {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.tp-ladder-summary-line .tp-positive { color: var(--tp-positive); }
+.tp-ladder-summary-line .tp-accent   { color: var(--tp-accent); }
+
+.tp-ladder-link {
+    color: var(--tp-accent);
+    text-decoration: none;
+    font-weight: 500;
+    margin-left: 0.25rem;
+}
+.tp-ladder-link:hover { text-decoration: underline; }
+
+/* Performance page — empty state */
+.tp-ladder-empty-perf {
+    padding: 1.5rem;
+    color: var(--tp-text-muted);
+    text-align: center;
+    font-size: 0.98rem;
+}
+.tp-ladder-empty-perf p { margin: 0; }
+
+/* ============================================================
+   Card-header icons (SymbiCore, WoolChipper, TreasuryBalancer)
+   Same visual language as the Profit Ladder icon tile, color-coded per strategy
+   ============================================================ */
+
+.tp-card-header-with-icon {
+    /* Icon block on the left, lifetime P&L on the right, title in the middle of the left block */
+}
+
+.tp-card-title-block {
+    display: flex;
+    align-items: center;
+    gap: 0.9rem;
+    min-width: 0;
+}
+
+.tp-card-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    border-radius: 0.6rem;
+    flex: 0 0 auto;
+    background: var(--tp-surface-2);
+    color: var(--tp-text-muted);
+}
+.tp-card-icon-symbicore {
+    background: rgba(63, 185, 80, 0.10);
+    color: var(--tp-positive);
+}
+.tp-card-icon-woolchipper {
+    background: rgba(210, 153, 34, 0.14);
+    color: var(--tp-warning);
+}
+.tp-card-icon-treasury {
+    background: rgba(88, 166, 255, 0.12);
+    color: var(--tp-accent);
+}
+
+/* On mobile, the icon should shrink slightly so the title still has room */
+@media (max-width: 575.98px) {
+    .tp-card-icon {
+        width: 38px;
+        height: 38px;
+    }
+    .tp-card-icon svg {
+        width: 22px;
+        height: 22px;
+    }
+}
+/* ============================================================
+   Funding page styles
+   ============================================================ */
+
+.tp-funding-card { margin-bottom: 1.5rem; }
+
+/* ---------------- Emergency Stop ---------------- */
+
+.tp-card-icon-estop {
+    background: rgba(248, 81, 73, 0.10);
+    color: var(--tp-negative);
+}
+.tp-card-icon-withdraw {
+    background: rgba(210, 153, 34, 0.14);
+    color: var(--tp-warning);
+}
+.tp-card-icon-deposit {
+    background: rgba(63, 185, 80, 0.10);
+    color: var(--tp-positive);
+}
+
+/* Active red variant of the ladder-pill (e-stop ENGAGED) */
+.tp-pill-danger {
+    color: var(--tp-negative) !important;
+    border-color: rgba(248, 81, 73, 0.45) !important;
+    background: rgba(248, 81, 73, 0.10) !important;
+}
+
+.tp-estop-card .tp-ladder-body { padding: 1.25rem 1.5rem 1.5rem; }
+
+.tp-estop-explainer p {
+    color: var(--tp-text);
+    font-size: 0.98rem;
+    line-height: 1.55;
+    margin: 0 0 1.25rem 0;
+    max-width: 760px;
+}
+
+.tp-estop-action {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.tp-estop-btn-engage {
+    background: var(--tp-negative);
+    border: 1.5px solid var(--tp-negative);
+    color: #fff;
+    padding: 0.75rem 1.75rem;
+    font-weight: 700;
+    font-size: 1.02rem;
+    border-radius: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.tp-estop-btn-engage:hover, .tp-estop-btn-engage:focus {
+    background: #d2342c;
+    border-color: #d2342c;
+    color: #fff;
+}
+
+.tp-estop-btn-resume {
+    background: var(--tp-positive);
+    border: 1.5px solid var(--tp-positive);
+    color: #0d1117;
+    padding: 0.75rem 1.75rem;
+    font-weight: 700;
+    font-size: 1.02rem;
+    border-radius: 0.5rem;
+}
+.tp-estop-btn-resume:hover, .tp-estop-btn-resume:focus {
+    background: #2ea043;
+    border-color: #2ea043;
+    color: #fff;
+}
+
+/* ---------------- Withdraw card ---------------- */
+
+.tp-withdraw-steps {
+    color: var(--tp-text);
+    line-height: 1.6;
+    padding-left: 1.5rem;
+    margin: 0 0 1.5rem 0;
+    max-width: 760px;
+}
+.tp-withdraw-steps li {
+    margin-bottom: 0.9rem;
+}
+.tp-withdraw-steps li:last-child { margin-bottom: 0; }
+
+.tp-withdraw-tip {
+    padding: 0.9rem 1.1rem;
+    background: rgba(88, 166, 255, 0.06);
+    border: 1px solid rgba(88, 166, 255, 0.25);
+    border-radius: 0.5rem;
+    color: var(--tp-text);
+    line-height: 1.55;
+    max-width: 760px;
+}
+.tp-withdraw-tip strong { color: var(--tp-accent); }
+
+/* ---------------- Deposit card ---------------- */
+
+.tp-deposit-coins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-bottom: 1.5rem;
+}
+
+.tp-coin-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.45rem 0.95rem;
+    background: var(--tp-surface-2);
+    border: 1px solid var(--tp-border);
+    border-radius: 0.55rem;
+    color: var(--tp-text);
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease;
+}
+.tp-coin-chip:hover {
+    border-color: var(--tp-accent);
+}
+.tp-coin-chip.active {
+    border-color: var(--tp-accent);
+    background: rgba(88, 166, 255, 0.12);
+    color: var(--tp-accent);
+}
+
+.tp-deposit-detail {
+    margin-top: 0.5rem;
+    padding: 1.25rem;
+    background: var(--tp-surface-2);
+    border: 1px solid var(--tp-border);
+    border-radius: 0.6rem;
+}
+
+.tp-deposit-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.85rem;
+}
+.tp-deposit-coin-name {
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--tp-text);
+}
+.tp-deposit-close {
+    background: transparent;
+    border: none;
+    color: var(--tp-text-muted);
+    font-size: 1.6rem;
+    line-height: 1;
+    padding: 0 0.5rem;
+    cursor: pointer;
+}
+.tp-deposit-close:hover { color: var(--tp-text); }
+
+.tp-deposit-status {
+    color: var(--tp-text-muted);
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+.tp-deposit-status.warn  { color: var(--tp-warning); }
+.tp-deposit-status.error { color: var(--tp-negative); }
+
+.tp-deposit-address-wrap {
+    margin-top: 1rem;
+}
+
+.tp-deposit-address {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+    margin: 0.4rem 0 1rem 0;
+}
+.tp-deposit-address-code {
+    flex: 1;
+    padding: 0.6rem 0.85rem;
+    background: var(--tp-bg);
+    border: 1px solid var(--tp-border);
+    border-radius: 0.4rem;
+    color: var(--tp-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.92rem;
+    word-break: break-all;
+}
+
+.tp-deposit-warning {
+    padding: 0.85rem 1rem;
+    background: rgba(248, 81, 73, 0.06);
+    border: 1px solid rgba(248, 81, 73, 0.35);
+    border-radius: 0.5rem;
+    color: var(--tp-text);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    font-size: 0.92rem;
+}
+.tp-deposit-warning strong { color: var(--tp-negative); }
+
+.tp-deposit-newaddr {
+    font-size: 0.88rem;
+    color: var(--tp-text-muted);
+}
+.tp-deposit-newaddr a { margin-right: 0.5rem; }

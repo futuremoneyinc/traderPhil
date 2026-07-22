@@ -1,0 +1,208 @@
+/* ============================================================
+   Funding page additions — append to site.css
+   ============================================================ */
+
+.tp-funding-card { margin-bottom: 1.5rem; }
+
+/* ---------------- Emergency Stop ---------------- */
+
+.tp-card-icon-estop {
+    background: rgba(248, 81, 73, 0.10);
+    color: var(--tp-negative);
+}
+.tp-card-icon-withdraw {
+    background: rgba(210, 153, 34, 0.14);
+    color: var(--tp-warning);
+}
+.tp-card-icon-deposit {
+    background: rgba(63, 185, 80, 0.10);
+    color: var(--tp-positive);
+}
+
+/* Active red variant of the ladder-pill (e-stop ENGAGED) */
+.tp-pill-danger {
+    color: var(--tp-negative) !important;
+    border-color: rgba(248, 81, 73, 0.45) !important;
+    background: rgba(248, 81, 73, 0.10) !important;
+}
+
+.tp-estop-card .tp-ladder-body { padding: 1.25rem 1.5rem 1.5rem; }
+
+.tp-estop-explainer p {
+    color: var(--tp-text);
+    font-size: 0.98rem;
+    line-height: 1.55;
+    margin: 0 0 1.25rem 0;
+    max-width: 760px;
+}
+
+.tp-estop-action {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.tp-estop-btn-engage {
+    background: var(--tp-negative);
+    border: 1.5px solid var(--tp-negative);
+    color: #fff;
+    padding: 0.75rem 1.75rem;
+    font-weight: 700;
+    font-size: 1.02rem;
+    border-radius: 0.5rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.tp-estop-btn-engage:hover, .tp-estop-btn-engage:focus {
+    background: #d2342c;
+    border-color: #d2342c;
+    color: #fff;
+}
+
+.tp-estop-btn-resume {
+    background: var(--tp-positive);
+    border: 1.5px solid var(--tp-positive);
+    color: #0d1117;
+    padding: 0.75rem 1.75rem;
+    font-weight: 700;
+    font-size: 1.02rem;
+    border-radius: 0.5rem;
+}
+.tp-estop-btn-resume:hover, .tp-estop-btn-resume:focus {
+    background: #2ea043;
+    border-color: #2ea043;
+    color: #fff;
+}
+
+/* ---------------- Withdraw card ---------------- */
+
+.tp-withdraw-steps {
+    color: var(--tp-text);
+    line-height: 1.6;
+    padding-left: 1.5rem;
+    margin: 0 0 1.5rem 0;
+    max-width: 760px;
+}
+.tp-withdraw-steps li {
+    margin-bottom: 0.9rem;
+}
+.tp-withdraw-steps li:last-child { margin-bottom: 0; }
+
+.tp-withdraw-tip {
+    padding: 0.9rem 1.1rem;
+    background: rgba(88, 166, 255, 0.06);
+    border: 1px solid rgba(88, 166, 255, 0.25);
+    border-radius: 0.5rem;
+    color: var(--tp-text);
+    line-height: 1.55;
+    max-width: 760px;
+}
+.tp-withdraw-tip strong { color: var(--tp-accent); }
+
+/* ---------------- Deposit card ---------------- */
+
+.tp-deposit-coins {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-bottom: 1.5rem;
+}
+
+.tp-coin-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.45rem 0.95rem;
+    background: var(--tp-surface-2);
+    border: 1px solid var(--tp-border);
+    border-radius: 0.55rem;
+    color: var(--tp-text);
+    font-weight: 600;
+    font-size: 0.92rem;
+    cursor: pointer;
+    transition: border-color 120ms ease, background 120ms ease;
+}
+.tp-coin-chip:hover {
+    border-color: var(--tp-accent);
+}
+.tp-coin-chip.active {
+    border-color: var(--tp-accent);
+    background: rgba(88, 166, 255, 0.12);
+    color: var(--tp-accent);
+}
+
+.tp-deposit-detail {
+    margin-top: 0.5rem;
+    padding: 1.25rem;
+    background: var(--tp-surface-2);
+    border: 1px solid var(--tp-border);
+    border-radius: 0.6rem;
+}
+
+.tp-deposit-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.85rem;
+}
+.tp-deposit-coin-name {
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--tp-text);
+}
+.tp-deposit-close {
+    background: transparent;
+    border: none;
+    color: var(--tp-text-muted);
+    font-size: 1.6rem;
+    line-height: 1;
+    padding: 0 0.5rem;
+    cursor: pointer;
+}
+.tp-deposit-close:hover { color: var(--tp-text); }
+
+.tp-deposit-status {
+    color: var(--tp-text-muted);
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+}
+.tp-deposit-status.warn  { color: var(--tp-warning); }
+.tp-deposit-status.error { color: var(--tp-negative); }
+
+.tp-deposit-address-wrap {
+    margin-top: 1rem;
+}
+
+.tp-deposit-address {
+    display: flex;
+    gap: 0.5rem;
+    align-items: stretch;
+    margin: 0.4rem 0 1rem 0;
+}
+.tp-deposit-address-code {
+    flex: 1;
+    padding: 0.6rem 0.85rem;
+    background: var(--tp-bg);
+    border: 1px solid var(--tp-border);
+    border-radius: 0.4rem;
+    color: var(--tp-text);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.92rem;
+    word-break: break-all;
+}
+
+.tp-deposit-warning {
+    padding: 0.85rem 1rem;
+    background: rgba(248, 81, 73, 0.06);
+    border: 1px solid rgba(248, 81, 73, 0.35);
+    border-radius: 0.5rem;
+    color: var(--tp-text);
+    line-height: 1.5;
+    margin-bottom: 1rem;
+    font-size: 0.92rem;
+}
+.tp-deposit-warning strong { color: var(--tp-negative); }
+
+.tp-deposit-newaddr {
+    font-size: 0.88rem;
+    color: var(--tp-text-muted);
+}
+.tp-deposit-newaddr a { margin-right: 0.5rem; }

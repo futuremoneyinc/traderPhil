@@ -1,0 +1,16 @@
+// =============================================================================
+// PROGRAM.CS REGISTRATIONS to add — paste these alongside the existing service
+// registrations (where ProfitTargetsRepository etc. are registered).
+// =============================================================================
+
+builder.Services.AddMemoryCache();   // IMemoryCache for FundingCache; safe to call again if already registered
+builder.Services.AddSingleton<IFundingRepository, FundingRepository>();
+builder.Services.AddSingleton<IFundingCache, FundingCache>();
+
+// =============================================================================
+// AND in _Layout.cshtml (head section), add the funding stylesheet:
+//
+//   <link rel="stylesheet" href="~/css/funding.css" asp-append-version="true" />
+//
+// OR: copy the contents of funding.css into your existing site.css and skip this.
+// =============================================================================

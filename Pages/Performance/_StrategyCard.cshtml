@@ -2,14 +2,48 @@
 @{
     var dayDetails = Model.DayDetails;
     var plClass = Model.LifetimePL > 0 ? "positive" : Model.LifetimePL < 0 ? "negative" : "";
+
+    // Strategy-specific icon class — colors the surrounding tile to match the strategy's character.
+    var iconCls = Model.StrategyKey switch
+    {
+        "SymbiCoreDCAcquisition" => "tp-card-icon tp-card-icon-symbicore",
+        "WoolChipperV2"          => "tp-card-icon tp-card-icon-woolchipper",
+        _                        => "tp-card-icon"
+    };
 }
 
 <section class="tp-card">
 
-    <header class="tp-card-header">
-        <div>
-            <h2 class="tp-card-title">@Model.DisplayName</h2>
-            <div class="tp-card-sub">Last 10 days · click any day for trade detail</div>
+    <header class="tp-card-header tp-card-header-with-icon">
+        <div class="tp-card-title-block">
+            <div class="@iconCls" aria-hidden="true">
+                @if (Model.StrategyKey == "SymbiCoreDCAcquisition")
+                {
+                    @* Infinity symbol - symbi-otic / continuous accumulation *@
+                    <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 16 C 9 11, 13 11, 16 16 C 19 21, 23 21, 23 16 C 23 11, 19 11, 16 16 C 13 21, 9 21, 9 16 Z" />
+                    </svg>
+                }
+                else if (Model.StrategyKey == "WoolChipperV2")
+                {
+                    @* Shield — defensive protection *@
+                    <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 4 L26 8 L26 16 C26 22 22 26 16 28 C10 26 6 22 6 16 L6 8 Z" />
+                        <path d="M12 16 L15 19 L21 13" />
+                    </svg>
+                }
+                else
+                {
+                    @* Generic fallback *@
+                    <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2">
+                        <circle cx="16" cy="16" r="10" />
+                    </svg>
+                }
+            </div>
+            <div>
+                <h2 class="tp-card-title">@Model.DisplayName</h2>
+                <div class="tp-card-sub">Last 10 days · click any day for trade detail</div>
+            </div>
         </div>
         <div class="text-end">
             <div class="tp-card-sub">Lifetime P&amp;L</div>
@@ -143,7 +177,7 @@
                                 @foreach (var t in detail!)
                                 {
                                     var tpl = t.RealizedPL > 0 ? "positive" : t.RealizedPL < 0 ? "negative" : "";
-                                    var pnlCell   = t.RealizedPL.ToString("+$#,##0.0000;-$#,##0.0000;$0.00");
+                                    var pnlCell   = t.RealizedPL.ToString("+$#,##0.00;-$#,##0.00;$0.00");
                                     var pnlRaw    = t.RealizedPL.ToString(System.Globalization.CultureInfo.InvariantCulture);
                                     var entryRaw  = t.EntryPrice.ToString(System.Globalization.CultureInfo.InvariantCulture);
                                     var exitRaw   = t.ClosePrice.ToString(System.Globalization.CultureInfo.InvariantCulture);

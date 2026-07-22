@@ -3,10 +3,408 @@
 @{ ViewData["Title"] = "Account"; }
 
 <div class="container py-4">
-    <div class="tp-card">
-        <header class="tp-card-header">
-            <h2 class="tp-card-title">Account</h2>
-        </header>
-        <div class="tp-empty">Profile, API keys, and notification settings coming soon.</div>
-    </div>
+
+    <tp-flash kind="@Model.FlashKind" message="@Model.FlashMessage" />
+
+    @if (Model.Profile is null)
+    {
+        <div class="tp-card">
+            <header class="tp-card-header"><h2 class="tp-card-title">Account</h2></header>
+            <div class="tp-empty">Couldn't load your profile. Try signing out and back in.</div>
+        </div>
+    }
+    else
+    {
+
+        @* =====================================================================
+           PROFILE card
+           ===================================================================== *@
+        <section class="tp-card tp-account-card">
+            <header class="tp-ladder-header">
+                <div class="tp-ladder-title-block">
+                    <tp-icon-tile color="blue">
+                        <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="16" cy="12" r="5" />
+                            <path d="M6 28 C 6 22, 11 19, 16 19 C 21 19, 26 22, 26 28" />
+                        </svg>
+                    </tp-icon-tile>
+                    <div>
+                        <h2 class="tp-ladder-title">Profile</h2>
+                        <div class="tp-ladder-subtitle">From your Google sign-in</div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="tp-ladder-body">
+                <dl class="tp-profile-grid">
+                    <dt>Name</dt>
+                    <dd>@(Model.Profile.DisplayName ?? "—")</dd>
+
+                    <dt>Email</dt>
+                    <dd>@Model.Profile.GoogleEmail</dd>
+
+                    <dt>Member since</dt>
+                    <dd>@Model.Profile.CreatedAt.ToString("MMM d, yyyy")</dd>
+
+                    <dt>Last login</dt>
+                    <dd>@(Model.Profile.LastLoginAt?.ToString("MMM d, yyyy HH:mm 'UTC'") ?? "—")</dd>
+
+                    <dt>Account ID</dt>
+                    <dd><code>#@Model.Profile.WebUserID</code></dd>
+                </dl>
+            </div>
+        </section>
+
+        @* =====================================================================
+           PRIVACY card
+           ===================================================================== *@
+        <section class="tp-card tp-account-card">
+            <header class="tp-ladder-header">
+                <div class="tp-ladder-title-block">
+                    <tp-icon-tile color="neutral">
+                        <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M8 14 L8 10 A8 8 0 0 1 24 10 L24 14" />
+                            <rect x="5" y="14" width="22" height="14" rx="2" />
+                            <circle cx="16" cy="21" r="1.8" fill="currentColor" />
+                        </svg>
+                    </tp-icon-tile>
+                    <div>
+                        <h2 class="tp-ladder-title">Privacy</h2>
+                        <div class="tp-ladder-subtitle">Control whether your performance is visible publicly</div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="tp-ladder-body">
+                <form method="post" asp-page-handler="SetPrivacy" class="tp-toggle-row">
+                    <label class="tp-toggle-switch">
+                        <input type="checkbox" name="displayStatsPublic" value="true"
+                               @(Model.Profile.DisplayStatsPublic ? "checked" : "")
+                               onchange="this.form.submit()" />
+                        <span class="tp-toggle-slider"></span>
+                    </label>
+                    <div class="tp-toggle-meta">
+                        <div class="tp-toggle-label">Display my stats publicly</div>
+                        <div class="tp-toggle-sub">
+                            When on, your win rate and P&amp;L percentages may appear on TraderPhil's
+                            public leaderboards (without your name or email).
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        @* =====================================================================
+           PROGRESS REPORTS card (only when user has a UEI)
+           ===================================================================== *@
+        @if (Model.CurrentUei > 0)
+        {
+            <section class="tp-card tp-account-card">
+                <header class="tp-ladder-header">
+                    <div class="tp-ladder-title-block">
+                        <tp-icon-tile color="green">
+                            <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="5" y="7" width="22" height="18" rx="2" />
+                                <path d="M5 11 L27 11" />
+                                <path d="M11 4 L11 10" />
+                                <path d="M21 4 L21 10" />
+                                <path d="M10 17 L13 20 L17 14" />
+                            </svg>
+                        </tp-icon-tile>
+                        <div>
+                            <h2 class="tp-ladder-title">Progress Reports</h2>
+                            <div class="tp-ladder-subtitle">How often you want a summary email</div>
+                        </div>
+                    </div>
+                </header>
+
+                <div class="tp-ladder-body">
+                    <form method="post" asp-page-handler="SetProgressFrequency">
+                        <input type="hidden" name="uei" value="@Model.CurrentUei" />
+
+                        <div class="tp-growth-options">
+                            @foreach (var opt in new[] { "Daily", "Weekly", "Monthly", "Never" })
+                            {
+                                var checkedAttr = Model.ProgressFreq == opt ? "checked" : "";
+                                <label class="tp-growth-option">
+                                    <input type="radio" name="frequency" value="@opt" @checkedAttr
+                                           onchange="this.form.submit()" />
+                                    <span class="tp-growth-card">
+                                        <span class="tp-growth-card-title">@opt</span>
+                                    </span>
+                                </label>
+                            }
+                        </div>
+                    </form>
+                </div>
+            </section>
+        }
+
+        @* =====================================================================
+           API KEYS card
+           ===================================================================== *@
+        @if (Model.CurrentUei > 0)
+        {
+            <section class="tp-card tp-account-card">
+                <header class="tp-ladder-header">
+                    <div class="tp-ladder-title-block">
+                        <tp-icon-tile color="yellow">
+                            <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="16" r="6" />
+                                <path d="M18 16 L28 16 L28 20 L26 20" />
+                                <path d="M22 16 L22 20" />
+                            </svg>
+                        </tp-icon-tile>
+                        <div>
+                            <h2 class="tp-ladder-title">API Keys</h2>
+                            <div class="tp-ladder-subtitle">Your Kraken connection</div>
+                        </div>
+                    </div>
+
+                    @if (Model.ApiKey is not null && Model.ApiKey.HasKey)
+                    {
+                        <span class="@Model.ApiKeyTestBadgeClass">@Model.ApiKeyTestBadgeLabel</span>
+                    }
+                </header>
+
+                <div class="tp-ladder-body">
+
+                    @if (Model.ApiKey is not null && Model.ApiKey.HasUndoableDelete)
+                    {
+                        <div class="tp-undo-banner">
+                            <div class="tp-undo-banner-msg">
+                                <strong>Key recently deleted.</strong>
+                                Rollback window closes
+                                @(Model.ApiKey.UndoExpiresAt?.ToString("MMM d, h:mm tt") ?? "soon").
+                            </div>
+                            <form method="post" asp-page-handler="UndoDelete" class="tp-undo-banner-form">
+                                <input type="hidden" name="uei" value="@Model.CurrentUei" />
+                                <button type="submit" class="btn btn-sm btn-primary">Undo</button>
+                            </form>
+                        </div>
+                    }
+
+                    @if (Model.ApiKey is null || !Model.ApiKey.HasKey)
+                    {
+                        @* ---------- NO KEY ON FILE: show Add form ---------- *@
+                        <div class="tp-empty tp-api-empty">
+                            No Kraken API key on file. Add one to start trading.
+                        </div>
+
+                        <form method="post" asp-page-handler="SaveKey" class="tp-api-key-form">
+                            <input type="hidden" name="uei" value="@Model.CurrentUei" />
+
+                            <div class="tp-form-row">
+                                <label class="tp-form-label" for="apiKeyInput">API Key</label>
+                                <input type="text" id="apiKeyInput" name="apiKey"
+                                       class="form-control form-control-sm tp-form-input tp-mono"
+                                       autocomplete="off" spellcheck="false" required />
+                            </div>
+
+                            <div class="tp-form-row">
+                                <label class="tp-form-label" for="apiSecretInput">Private Key (Secret)</label>
+                                <input type="password" id="apiSecretInput" name="apiSecret"
+                                       class="form-control form-control-sm tp-form-input tp-mono"
+                                       autocomplete="off" spellcheck="false" required />
+                                <div class="tp-form-help">
+                                    Both come from Kraken's API settings page. We test the key before saving.
+                                    Keys with Withdraw funds or Margin trading permissions will be rejected.
+                                </div>
+                            </div>
+
+                            <div class="tp-form-actions">
+                                <button type="submit" class="btn btn-primary btn-sm">Test &amp; save key</button>
+                            </div>
+                        </form>
+                    }
+                    else
+                    {
+                        @* ---------- KEY EXISTS: show summary + actions ---------- *@
+                        <dl class="tp-profile-grid">
+                            @if (!string.IsNullOrEmpty(Model.ApiKey.ApiKeyName))
+                            {
+                                <dt>Name</dt>
+                                <dd>@Model.ApiKey.ApiKeyName</dd>
+                            }
+
+                            <dt>Key</dt>
+                            <dd><code class="tp-mono">@Model.ApiKey.KeyPreview</code></dd>
+
+                            @if (Model.ApiKey.ApiKeyModifiedAt is DateTime modAt)
+                            {
+                                <dt>Last modified</dt>
+                                <dd>@modAt.ToString("MMM d, yyyy")</dd>
+                            }
+
+                            @if (Model.ApiKey.ApiKeyExpiresAt is DateTime expAt)
+                            {
+                                <dt>Expires</dt>
+                                <dd>@expAt.ToString("MMM d, yyyy")</dd>
+                            }
+                            else
+                            {
+                                <dt>Expires</dt>
+                                <dd>No expiration</dd>
+                            }
+
+                            @if (Model.ApiKey.LastApiTestAt is DateTime testAt)
+                            {
+                                <dt>Last tested</dt>
+                                <dd>@testAt.ToString("MMM d, yyyy HH:mm 'UTC'")</dd>
+                            }
+                        </dl>
+
+                        <div class="tp-api-actions">
+                            <form method="post" asp-page-handler="TestKey" class="d-inline">
+                                <input type="hidden" name="uei" value="@Model.CurrentUei" />
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Test Connection</button>
+                            </form>
+
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                    data-toggle-replace="true">Replace key</button>
+
+                            <form method="post" asp-page-handler="DeleteKey" class="d-inline"
+                                  onsubmit="return confirm('Delete this API key? You have 24 hours to undo.');">
+                                <input type="hidden" name="uei" value="@Model.CurrentUei" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete key</button>
+                            </form>
+                        </div>
+
+                        @* Replace form, hidden by default unless user clicks Replace OR the
+                           page model says AddKeyFormOpen (e.g. validation failed) *@
+                        <div class="@Model.ApiReplaceFormClass" id="apiReplaceForm">
+                            <form method="post" asp-page-handler="SaveKey" class="tp-api-key-form">
+                                <input type="hidden" name="uei" value="@Model.CurrentUei" />
+
+                                <div class="tp-form-row">
+                                    <label class="tp-form-label" for="apiKeyInputR">New API Key</label>
+                                    <input type="text" id="apiKeyInputR" name="apiKey"
+                                           class="form-control form-control-sm tp-form-input tp-mono"
+                                           autocomplete="off" spellcheck="false" required />
+                                </div>
+
+                                <div class="tp-form-row">
+                                    <label class="tp-form-label" for="apiSecretInputR">New Private Key</label>
+                                    <input type="password" id="apiSecretInputR" name="apiSecret"
+                                           class="form-control form-control-sm tp-form-input tp-mono"
+                                           autocomplete="off" spellcheck="false" required />
+                                    <div class="tp-form-help">
+                                        Your current key will be kept for 24 hours so you can roll back.
+                                    </div>
+                                </div>
+
+                                <div class="tp-form-actions">
+                                    <button type="submit" class="btn btn-primary btn-sm">Test &amp; replace</button>
+                                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            data-cancel-replace="true">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
+                    }
+
+                    @* ---------- PERMISSION AUDIT REPORT (after a Test or Save attempt) ---------- *@
+                    @if (Model.LastAudit is not null)
+                    {
+                        <div class="tp-audit-report">
+                            <div class="tp-audit-header">Permission check</div>
+                            <ul class="tp-audit-list">
+                                @foreach (var req in TraderPhil.V4.Web.Kraken.KrakenKeyPermissionPolicy.Required)
+                                {
+                                    var granted = Model.LastAudit.Granted.Contains(req);
+                                    var statusCls = granted ? "ok" : "bad";
+                                    var statusMark = granted ? "✓" : "✗";
+                                    var label = TraderPhil.V4.Web.Kraken.KrakenKeyPermissionPolicy.DisplayName(req);
+                                    <li class="tp-audit-item @statusCls">
+                                        <span class="tp-audit-mark">@statusMark</span>
+                                        <span class="tp-audit-label">@label</span>
+                                        <span class="tp-audit-note">required</span>
+                                    </li>
+                                }
+
+                                @foreach (var bad in Model.LastAudit.ForbiddenGranted)
+                                {
+                                    var label = TraderPhil.V4.Web.Kraken.KrakenKeyPermissionPolicy.DisplayName(bad);
+                                    <li class="tp-audit-item bad">
+                                        <span class="tp-audit-mark">✗</span>
+                                        <span class="tp-audit-label">@label</span>
+                                        <span class="tp-audit-note">must be disabled</span>
+                                    </li>
+                                }
+                            </ul>
+
+                            @if (Model.LastIpAllowlist.Count > 0)
+                            {
+                                <details class="tp-audit-advanced">
+                                    <summary>Advanced: IP allowlist (@Model.LastIpAllowlist.Count entries)</summary>
+                                    <ul class="tp-audit-ips">
+                                        @foreach (var ip in Model.LastIpAllowlist)
+                                        {
+                                            <li><code class="tp-mono">@ip</code></li>
+                                        }
+                                    </ul>
+                                </details>
+                            }
+                        </div>
+                    }
+                </div>
+            </section>
+        }
+
+        @* =====================================================================
+           SUBSCRIPTION card (stub — provider-shape ready for real wiring)
+           ===================================================================== *@
+        <section class="tp-card tp-account-card">
+            <header class="tp-ladder-header">
+                <div class="tp-ladder-title-block">
+                    <tp-icon-tile color="blue">
+                        <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="4" y="8" width="24" height="16" rx="2" />
+                            <path d="M4 13 L28 13" />
+                            <path d="M9 19 L12 19" />
+                        </svg>
+                    </tp-icon-tile>
+                    <div>
+                        <h2 class="tp-ladder-title">Subscription</h2>
+                        <div class="tp-ladder-subtitle">@Model.Subscription.Provider</div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="tp-ladder-body">
+                <dl class="tp-profile-grid">
+                    <dt>Provider</dt>
+                    <dd>@Model.Subscription.Provider</dd>
+
+                    @if (Model.Subscription.ExpiresOn is DateTime exp)
+                    {
+                        <dt>Expires</dt>
+                        <dd>@exp.ToString("MMM d, yyyy")</dd>
+                    }
+
+                    <dt>Auto-renew</dt>
+                    <dd>@Model.SubscriptionAutoRenewLabel</dd>
+                </dl>
+
+                <div class="tp-api-actions">
+                    <a href="@Model.SubscriptionActionUrl" class="btn btn-sm btn-outline-secondary">
+                        @Model.SubscriptionActionLabel
+                    </a>
+                    <a href="@Model.Subscription.UpgradeUrl" class="btn btn-sm btn-primary">Upgrade</a>
+                </div>
+            </div>
+        </section>
+
+        @* =====================================================================
+           SIGN OUT card
+           ===================================================================== *@
+        <section class="tp-card tp-account-card">
+            <div class="tp-ladder-body tp-signout-body">
+                <a href="/Account/SignOut" class="btn btn-outline-secondary">Sign out</a>
+            </div>
+        </section>
+    }
 </div>
+
+@section Scripts {
+    <script src="~/js/account.js" asp-append-version="true"></script>
+}

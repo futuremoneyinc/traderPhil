@@ -65,3 +65,52 @@ document.addEventListener('click', function (e) {
 
     rows.forEach(function (r) { tbody.appendChild(r); });
 });
+
+
+// =================================================================
+// Strategy page: shared edit-toggle / add-form / treasury handlers
+// (Slider-specific logic lives in strategy.js)
+// =================================================================
+
+document.addEventListener('click', function (e) {
+    // Cancel an edit
+    var c = e.target.closest('[data-cancel-edit="true"]');
+    if (c) {
+        var row = c.closest('.tp-strategy-row');
+        if (row) row.classList.remove('editing');
+        return;
+    }
+    // Toggle treasury edit on
+    var ta = e.target.closest('[data-toggle-edit-treasury="true"]');
+    if (ta) {
+        var row = ta.closest('.tp-strategy-row');
+        if (row) row.classList.add('editing');
+        return;
+    }
+    // Cancel treasury edit
+    var tc = e.target.closest('[data-cancel-edit-treasury="true"]');
+    if (tc) {
+        var row = tc.closest('.tp-strategy-row');
+        if (row) row.classList.remove('editing');
+        return;
+    }
+    // Toggle "+ Add a coin" form
+    var addToggle = e.target.closest('[data-toggle-add="true"]');
+    if (addToggle) {
+        var f = document.getElementById('addForm');
+        if (f) {
+            var wasOpen = f.classList.toggle('open');
+            addToggle.textContent = wasOpen ? 'Cancel' : '+ Add a coin';
+        }
+        return;
+    }
+    // Cancel "+ Add a coin" form
+    var addCancel = e.target.closest('[data-cancel-add="true"]');
+    if (addCancel) {
+        var f = document.getElementById('addForm');
+        if (f) f.classList.remove('open');
+        var btn = document.querySelector('[data-toggle-add="true"]');
+        if (btn) btn.textContent = '+ Add a coin';
+        return;
+    }
+});

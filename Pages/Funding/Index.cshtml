@@ -3,10 +3,224 @@
 @{ ViewData["Title"] = "Funding"; }
 
 <div class="container py-4">
-    <div class="tp-card">
-        <header class="tp-card-header">
-            <h2 class="tp-card-title">Funding</h2>
-        </header>
-        <div class="tp-empty">Withdrawal controls, deposit addresses, and the emergency stop will live here.</div>
-    </div>
+
+    @if (Model.AvailableUeis.Count == 0)
+    {
+        <div class="tp-card">
+            <header class="tp-card-header">
+                <h2 class="tp-card-title">Funding</h2>
+            </header>
+            <div class="tp-empty">You don't have access to any accounts yet.</div>
+        </div>
+    }
+    else
+    {
+        @if (Model.AvailableUeis.Count > 1)
+        {
+            <div class="tp-uei-switcher mb-3">
+                @foreach (var u in Model.AvailableUeis)
+                {
+                    var cls = u == Model.CurrentUei ? "btn btn-primary btn-sm" : "btn btn-outline-secondary btn-sm";
+                    <a asp-page="/Funding/Index" asp-route-uei="@u" class="@cls">Account @u</a>
+                }
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Model.FlashMessage))
+        {
+            var alertCls = Model.FlashKind == "error" ? "tp-flash error" : "tp-flash success";
+            <div class="@alertCls">@Model.FlashMessage</div>
+        }
+
+        @* ============================================================
+           EMERGENCY STOP card
+           ============================================================ *@
+        <section class="tp-card tp-funding-card tp-estop-card">
+            <header class="tp-ladder-header">
+                <div class="tp-ladder-title-block">
+                    <div class="tp-card-icon tp-card-icon-estop" aria-hidden="true">
+                        <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="16" cy="16" r="11" />
+                            <path d="M11 11 L21 21" />
+                            <path d="M21 11 L11 21" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="tp-ladder-title">Emergency Stop</h2>
+                        <div class="tp-ladder-subtitle">
+                            Halts all new trade placement immediately. Existing orders stay live.
+                        </div>
+                    </div>
+                </div>
+
+                <span class="@Model.EmergencyStopPillClass">
+                    <span class="tp-ladder-pill-dot"></span>
+                    @Model.EmergencyStopPillLabel
+                </span>
+            </header>
+
+            <div class="tp-ladder-body">
+                <div class="tp-estop-explainer">
+                    @if (Model.EmergencyStopEnabled)
+                    {
+                        <p>
+                            <strong>Trading is halted.</strong> No new orders will be placed by TraderPhil
+                            until you disengage the emergency stop. Open orders on Kraken stay where they
+                            are - if a price moves into one, it'll still fill.
+                        </p>
+                    }
+                    else
+                    {
+                        <p>
+                            Engage the emergency stop before initiating a withdrawal, debugging a strategy,
+                            or any time you need to pause TraderPhil without cancelling open orders.
+                        </p>
+                    }
+                </div>
+
+                <form method="post" asp-page-handler="ToggleEmergencyStop" class="tp-estop-action">
+                    <input type="hidden" name="uei" value="@Model.CurrentUei" />
+                    <button type="submit" class="@Model.EmergencyStopButtonClass">
+                        @Model.EmergencyStopButtonLabel
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        @* ============================================================
+           WITHDRAW card — static instructions, no API hookup
+           ============================================================ *@
+        <section class="tp-card tp-funding-card">
+            <header class="tp-ladder-header">
+                <div class="tp-ladder-title-block">
+                    <div class="tp-card-icon tp-card-icon-withdraw" aria-hidden="true">
+                        <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 20 L16 4" />
+                            <path d="M9 11 L16 4 L23 11" />
+                            <path d="M4 23 L4 27 L28 27 L28 23" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="tp-ladder-title">Withdraw funds</h2>
+                        <div class="tp-ladder-subtitle">Move USD or crypto off Kraken back to your wallet or bank.</div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="tp-ladder-body">
+                <ol class="tp-withdraw-steps">
+                    <li>
+                        <strong>Engage the Emergency Stop above.</strong>
+                        This prevents TraderPhil from placing new trades that could consume the
+                        capital you're trying to withdraw.
+                    </li>
+                    <li>
+                        Log into Kraken directly and initiate the withdrawal from your account there.
+                        TraderPhil never holds your funds — Kraken does.
+                    </li>
+                    <li>
+                        Once the withdrawal is complete (or you've decided to cancel it),
+                        <strong>come back here and disengage the Emergency Stop</strong> so trading resumes.
+                    </li>
+                </ol>
+
+                <div class="tp-withdraw-tip">
+                    <strong>Why through Kraken directly?</strong>
+                    Withdrawals are a high-risk action and Kraken's interface includes the
+                    confirmations, two-factor checks, and address whitelisting that protect you.
+                    TraderPhil reads from Kraken — it doesn't move money on your behalf.
+                </div>
+            </div>
+        </section>
+
+        @* ============================================================
+           DEPOSIT card — coin list + dynamic methods/address loader
+           ============================================================ *@
+        <section class="tp-card tp-funding-card" id="depositCard">
+            <header class="tp-ladder-header">
+                <div class="tp-ladder-title-block">
+                    <div class="tp-card-icon tp-card-icon-deposit" aria-hidden="true">
+                        <svg viewBox="0 0 32 32" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 4 L16 22" />
+                            <path d="M9 15 L16 22 L23 15" />
+                            <path d="M4 27 L28 27" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h2 class="tp-ladder-title">Deposit addresses</h2>
+                        <div class="tp-ladder-subtitle">Pick a coin to see your Kraken deposit address.</div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="tp-ladder-body">
+                @if (Model.DepositCoins.Count == 0)
+                {
+                    <div class="tp-empty">
+                        No active coins to deposit to. Add a coin on the
+                        <a asp-page="/Strategy/Index" class="tp-ladder-link">Strategy page</a> first.
+                    </div>
+                }
+                else
+                {
+                    <div class="tp-deposit-coins" data-uei="@Model.CurrentUei">
+                        @foreach (var c in Model.DepositCoins)
+                        {
+                            <button type="button"
+                                    class="tp-coin-chip"
+                                    data-symbol-id="@c.SymbolID"
+                                    data-asset="@c.KrakenAssetCode"
+                                    data-name="@c.DisplayName">
+                                <span class="tp-coin-chip-label">@c.DisplayName</span>
+                            </button>
+                        }
+                    </div>
+
+                    <div class="tp-deposit-detail" id="depositDetail" style="display:none">
+                        <div class="tp-deposit-detail-header">
+                            <span class="tp-deposit-coin-name" id="depositCoinName">—</span>
+                            <button type="button" class="tp-deposit-close" data-deposit-close="true" aria-label="Close">×</button>
+                        </div>
+
+                        <div class="tp-form-row" id="depositMethodRow" style="display:none">
+                            <label class="tp-form-label" for="depositMethodSelect">Network</label>
+                            <select id="depositMethodSelect" class="form-control form-control-sm tp-form-input"></select>
+                        </div>
+
+                        <div class="tp-deposit-status" id="depositStatus">Loading networks…</div>
+
+                        <div class="tp-deposit-address-wrap" id="depositAddressWrap" style="display:none">
+                            <label class="tp-form-label">Deposit address</label>
+                            <div class="tp-deposit-address">
+                                <code class="tp-deposit-address-code" id="depositAddressCode"></code>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="depositCopyBtn">
+                                    Copy
+                                </button>
+                            </div>
+
+                            <div class="tp-deposit-warning">
+                                <strong>⚠ Send only the matching asset on the matching network.</strong>
+                                Sending the wrong coin or using the wrong network can result in
+                                <strong>permanent loss of funds</strong>. Always send a small test
+                                amount first.
+                            </div>
+
+                            <div class="tp-deposit-newaddr">
+                                <a href="#" id="depositGenerateNew" class="tp-ladder-link">
+                                    Generate a new address
+                                </a>
+                                <span class="tp-form-help">
+                                    (advanced — only needed if you want a fresh address for privacy)
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </section>
+    }
 </div>
+
+@section Scripts {
+    <script src="~/js/funding.js" asp-append-version="true"></script>
+}

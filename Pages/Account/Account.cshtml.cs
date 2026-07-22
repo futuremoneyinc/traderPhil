@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
-using System.Security.Claims;
 using TraderPhil.V4.Web.Auth;
 
 namespace TraderPhil.V4.Web.Pages.Account;
@@ -21,36 +20,24 @@ public class SignInModel : PageModel
 
 public class CallbackModel : PageModel
 {
-    private readonly IWebUserRepository _users;
+    // The WebUser lookup and claim injection now happen in Program.cs's
+    // OnTicketReceived event, BEFORE the cookie is written. By the time we land
+    // here, User is fully populated with WebUserID/IsAdmin claims and the cookie
+    // is already in flight. We just need to honor returnUrl.
+    //
+    // We intentionally do NOT call HttpContext.SignInAsync here. Doing so would
+    // produce a second Set-Cookie header on the response chain - the same bug
+    // that caused mobile browsers to drop the WebUserID claim and forced users
+    // into the "can't find my account" sign-out-and-back-in dance.
 
-    public CallbackModel(IWebUserRepository users) { _users = users; }
-
-    public async Task<IActionResult> OnGetAsync(string? returnUrl = null)
+    public IActionResult OnGet(string? returnUrl = null)
     {
-        // The Google handler has already populated User with claims at this point.
-        var sub   = User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var email = User.FindFirstValue(ClaimTypes.Email);
-        var name  = User.FindFirstValue(ClaimTypes.Name);
-
-        if (string.IsNullOrEmpty(sub) || string.IsNullOrEmpty(email))
+        // If something went sideways and we don't have a WebUserID claim, kick to
+        // Forbidden. This shouldn't happen with the new OnTicketReceived flow
+        // (it calls ctx.Fail on lookup failure, which routes to Forbidden via
+        // OnRemoteFailure), but it's belt-and-suspenders for robustness.
+        if (string.IsNullOrEmpty(User.FindFirst("WebUserID")?.Value))
             return RedirectToPage("/Account/Forbidden");
-
-        var webUser = await _users.SignInAsync(sub, email, name);
-        if (webUser is null)
-            return RedirectToPage("/Account/Forbidden");
-
-        // Build our own cookie identity carrying the WebUserID + admin flag.
-        var claims = new List<Claim>
-        {
-            new Claim(ClaimTypes.NameIdentifier, sub),
-            new Claim(ClaimTypes.Email, email),
-            new Claim(ClaimTypes.Name, name ?? email),
-            new Claim("WebUserID", webUser.WebUserID.ToString()),
-            new Claim("IsAdmin",   webUser.IsAdmin.ToString())
-        };
-
-        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
 
         return LocalRedirect(string.IsNullOrEmpty(returnUrl) ? "/Performance" : returnUrl);
     }
