@@ -1,0 +1,54 @@
+@model TraderPhil.V4.Web.Pages.Onboarding.IndexModel
+@using TraderPhil.V4.Web.Kraken
+@using TraderPhil.V4.Web.Models
+
+<section class="tp-ob-step tp-ob-step-narrow">
+    <header class="tp-ob-step-head">
+        <h1 class="tp-ob-step-title">Let's make sure it's talking</h1>
+        <p class="tp-ob-step-sub">
+            Your key is saved. One live check confirms TraderPhil can read your account and place orders —
+            then we're through the technical part for good.
+        </p>
+    </header>
+
+    <div class="tp-ob-verify-card">
+        <div class="tp-ob-verify-key">
+            <span class="tp-ob-verify-key-label">Connected key</span>
+            <code class="tp-mono">@(Model.ApiKey?.KeyPreview ?? "—")</code>
+            @if (!string.IsNullOrEmpty(Model.ApiKey?.ApiKeyName))
+            {
+                <span class="tp-ob-verify-key-name">@Model.ApiKey!.ApiKeyName</span>
+            }
+        </div>
+
+        @if (Model.LastAudit is not null && !Model.LastAudit.Passed)
+        {
+            <div class="tp-audit-report">
+                <div class="tp-audit-header">Permission check</div>
+                <ul class="tp-audit-list">
+                    @foreach (var req in KrakenKeyPermissionPolicy.Required)
+                    {
+                        var ok = Model.LastAudit.Granted.Contains(req);
+                        <li class="tp-audit-item @(ok ? "ok" : "bad")">
+                            <span class="tp-audit-mark">@(ok ? "✓" : "✗")</span>
+                            <span class="tp-audit-label">@KrakenKeyPermissionPolicy.DisplayName(req)</span>
+                            <span class="tp-audit-note">required</span>
+                        </li>
+                    }
+                </ul>
+            </div>
+            <a class="tp-ob-link" href="/onboarding?step=@((int)OnboardingStep.Connect)">&larr; Back to fix my key</a>
+        }
+
+        <form method="post" asp-page-handler="Verify" class="tp-ob-verify-form" data-busy-form>
+            <button type="submit" class="tp-ob-btn tp-ob-btn-primary tp-ob-btn-busy">
+                <span class="tp-ob-btn-spinner" aria-hidden="true"></span>
+                <span class="tp-ob-btn-label">Verify connection</span>
+            </button>
+        </form>
+
+        <p class="tp-ob-field-help tp-text-center">
+            This only reads your account — it never moves funds.
+        </p>
+    </div>
+</section>

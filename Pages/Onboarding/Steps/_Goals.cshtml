@@ -1,0 +1,107 @@
+@model TraderPhil.V4.Web.Pages.Onboarding.IndexModel
+@using TraderPhil.V4.Web.Models
+@{
+    var savedGoal    = Model.State?.InvestmentGoal ?? "balanced";
+    var savedFunding = Model.State?.FundingAmount ?? 1_000m;
+    var savedTarget  = Model.State?.TargetAmount ?? 1_000_000m;
+    var preview      = Model.LadderPreview ?? ProfitLadderPreview.Compute(
+                           OnboardingGoals.StartProfitFromFunding(savedFunding),
+                           OnboardingGoals.GrowthForGoal(savedGoal),
+                           savedTarget);
+}
+
+<section class="tp-ob-step">
+    <header class="tp-ob-step-head">
+        <h1 class="tp-ob-step-title">Let's shape your plan</h1>
+        <p class="tp-ob-step-sub">
+            A couple of quick questions. Your answers build your <strong>Profit Ladder</strong> —
+            the sequence of rising targets TraderPhil climbs on your behalf.
+        </p>
+    </header>
+
+    <form method="post" asp-page-handler="Goals" class="tp-ob-goals"
+          id="tpGoalsForm"
+          data-cap="10000" data-numseq="10">
+
+        @* ---- Q1: investment goal → growth speed ---- *@
+        <fieldset class="tp-ob-fieldset">
+            <legend class="tp-ob-legend">What kind of ride do you want?</legend>
+            <div class="tp-ob-choice-grid">
+                @foreach (var (key, title, blurb, growth) in OnboardingGoals.GoalOptions)
+                {
+                    <label class="tp-ob-choice">
+                        <input type="radio" name="InvestmentGoal" value="@key"
+                               data-growth="@growth.ToString(System.Globalization.CultureInfo.InvariantCulture)"
+                               @(string.Equals(key, savedGoal, StringComparison.OrdinalIgnoreCase) ? "checked" : "") />
+                        <span class="tp-ob-choice-card">
+                            <span class="tp-ob-choice-title">@title</span>
+                            <span class="tp-ob-choice-blurb">@blurb</span>
+                        </span>
+                    </label>
+                }
+            </div>
+        </fieldset>
+
+        @* ---- Q2: funding amount → first rung ---- *@
+        <fieldset class="tp-ob-fieldset">
+            <legend class="tp-ob-legend">Roughly how much will you fund with?</legend>
+            <div class="tp-ob-money">
+                <span class="tp-ob-money-prefix">$</span>
+                <input type="number" name="FundingAmount" id="tpFunding"
+                       class="form-control tp-ob-money-input"
+                       min="100" step="100" value="@savedFunding.ToString("0")" required />
+            </div>
+            <p class="tp-ob-field-help">
+                This just sizes your first target — you'll deposit on your own terms later.
+                Nothing is charged now.
+            </p>
+        </fieldset>
+
+        @* ---- Q3: long-term goal → ladder top ---- *@
+        <fieldset class="tp-ob-fieldset">
+            <legend class="tp-ob-legend">What's the long-term profit goal?</legend>
+            <div class="tp-ob-target-chips">
+                @foreach (var (amount, label) in OnboardingGoals.TargetOptions)
+                {
+                    <button type="button" class="tp-ob-target-chip" data-target="@amount.ToString("0")">@label</button>
+                }
+            </div>
+            <div class="tp-ob-money">
+                <span class="tp-ob-money-prefix">$</span>
+                <input type="number" name="TargetAmount" id="tpTarget"
+                       class="form-control tp-ob-money-input"
+                       min="1000" step="1000" value="@savedTarget.ToString("0")" required />
+            </div>
+        </fieldset>
+
+        @* ---- Live preview ---- *@
+        <div class="tp-ob-preview" id="tpLadderPreview">
+            <div class="tp-ob-preview-head">Your Profit Ladder, at a glance</div>
+            <div class="tp-ob-preview-grid">
+                <div class="tp-ob-preview-tile">
+                    <div class="tp-ob-preview-label">First target</div>
+                    <div class="tp-ob-preview-value" data-preview="first">$@preview.FirstRung.ToString("N2")</div>
+                </div>
+                <div class="tp-ob-preview-tile">
+                    <div class="tp-ob-preview-label">Steps in your climb</div>
+                    <div class="tp-ob-preview-value" data-preview="rungs">@preview.RungCount.ToString("N0")</div>
+                </div>
+                <div class="tp-ob-preview-tile">
+                    <div class="tp-ob-preview-label">Largest target</div>
+                    <div class="tp-ob-preview-value" data-preview="largest">$@preview.LargestRung.ToString("N2")</div>
+                </div>
+                <div class="tp-ob-preview-tile">
+                    <div class="tp-ob-preview-label">Cumulative goal</div>
+                    <div class="tp-ob-preview-value" data-preview="total">$@preview.TotalProfit.ToString("N0")</div>
+                </div>
+            </div>
+            <p class="tp-ob-preview-note">
+                An estimate — TraderPhil fine-tunes each rung to exchange minimums when it builds the real ladder.
+            </p>
+        </div>
+
+        <div class="tp-ob-actions">
+            <button type="submit" class="tp-ob-btn tp-ob-btn-primary">Build my ladder &rarr;</button>
+        </div>
+    </form>
+</section>

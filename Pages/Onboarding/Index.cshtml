@@ -1,0 +1,62 @@
+@page "/onboarding"
+@model TraderPhil.V4.Web.Pages.Onboarding.IndexModel
+@using TraderPhil.V4.Web.Models
+@{
+    ViewData["Title"] = "Get started";
+    Layout = "_OnboardingLayout";
+
+    var currentVal  = (int)Model.Step;
+    var furthestVal = Model.State is null ? currentVal : Model.State.CurrentStep;
+    var showRail    = Model.IsAuthenticated && Model.Step != OnboardingStep.Welcome;
+}
+
+<div class="tp-ob-shell">
+
+    @if (showRail)
+    {
+        <ol class="tp-ob-rail" aria-label="Onboarding progress">
+            @for (var i = 0; i < OnboardingStepInfo.RailSteps.Length; i++)
+            {
+                var (railStep, label) = OnboardingStepInfo.RailSteps[i];
+                var v   = (int)railStep;
+                var cls = v == currentVal ? "active" : (v < furthestVal ? "done" : "upcoming");
+                <li class="tp-ob-rail-step @cls">
+                    <span class="tp-ob-rail-dot">
+                        @if (cls == "done") { <text>&#10003;</text> } else { @(i + 1) }
+                    </span>
+                    <span class="tp-ob-rail-label">@label</span>
+                </li>
+            }
+        </ol>
+    }
+
+    <tp-flash kind="@Model.FlashKind" message="@Model.FlashMessage" />
+
+    @switch (Model.Step)
+    {
+        case OnboardingStep.Welcome:
+            <partial name="Steps/_Welcome" model="Model" />
+            break;
+        case OnboardingStep.Goals:
+            <partial name="Steps/_Goals" model="Model" />
+            break;
+        case OnboardingStep.Connect:
+            <partial name="Steps/_Connect" model="Model" />
+            break;
+        case OnboardingStep.Verify:
+            <partial name="Steps/_Verify" model="Model" />
+            break;
+        case OnboardingStep.Lounge:
+            <partial name="Steps/_Lounge" model="Model" />
+            break;
+        case OnboardingStep.Tour:
+            <partial name="Steps/_Tour" model="Model" />
+            break;
+        case OnboardingStep.Plans:
+            <partial name="Steps/_Plans" model="Model" />
+            break;
+        default:
+            <partial name="Steps/_Goals" model="Model" />
+            break;
+    }
+</div>
