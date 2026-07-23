@@ -385,11 +385,41 @@
                     <dd>@Model.SubscriptionAutoRenewLabel</dd>
                 </dl>
 
+                @if (Model.ProtectionActive)
+                {
+                    <div class="tp-undo-banner">
+                        <div class="tp-undo-banner-msg">
+                            <strong>Protection Mode active.</strong>
+                            Your subscription has lapsed, so TraderPhil has stopped opening new positions
+                            while it safely manages the ones you already have. Reactivate to resume full trading.
+                        </div>
+                    </div>
+                }
+
                 <div class="tp-api-actions">
-                    <a href="@Model.SubscriptionActionUrl" class="btn btn-sm btn-outline-secondary">
-                        @Model.SubscriptionActionLabel
-                    </a>
-                    <a href="@Model.Subscription.UpgradeUrl" class="btn btn-sm btn-primary">Upgrade</a>
+                    @if (Model.HasActiveSubscription)
+                    {
+                        <form method="post" asp-page-handler="ManageBilling" class="d-inline">
+                            <button type="submit" class="btn btn-sm btn-primary">Manage billing</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <form method="post" asp-page-handler="Upgrade" class="d-inline">
+                            <input type="hidden" name="plan" value="captain" />
+                            <button type="submit" class="btn btn-sm btn-primary">Upgrade to Captain</button>
+                        </form>
+                        <form method="post" asp-page-handler="Upgrade" class="d-inline">
+                            <input type="hidden" name="plan" value="admiral" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Go Admiral</button>
+                        </form>
+                        @if (Model.HasStripeCustomer)
+                        {
+                            <form method="post" asp-page-handler="ManageBilling" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">Manage billing</button>
+                            </form>
+                        }
+                    }
                 </div>
             </div>
         </section>

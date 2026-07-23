@@ -4,6 +4,7 @@ using TraderPhil.V4.Web.Auth;
 using TraderPhil.V4.Web.Data;
 using TraderPhil.V4.Web.Kraken;
 using TraderPhil.V4.Web.Models;
+using TraderPhil.V4.Web.Services;
 
 namespace TraderPhil.V4.Web.Pages.Onboarding;
 
@@ -29,6 +30,7 @@ public class IndexModel : TraderPhilPageModel
     private readonly IAccountRepository       _account;
     private readonly IProfitTargetsRepository _profitTargets;
     private readonly IUserSettingsRepository  _userSettings;
+    private readonly IStripeBillingService    _billing;
     private readonly ILogger<IndexModel>      _logger;
 
     public IndexModel(
@@ -37,12 +39,14 @@ public class IndexModel : TraderPhilPageModel
         IAccountRepository       account,
         IProfitTargetsRepository profitTargets,
         IUserSettingsRepository  userSettings,
+        IStripeBillingService    billing,
         ILogger<IndexModel>      logger) : base(users)
     {
         _onboarding    = onboarding;
         _account       = account;
         _profitTargets = profitTargets;
         _userSettings  = userSettings;
+        _billing       = billing;
         _logger        = logger;
     }
 
@@ -347,6 +351,43 @@ public class IndexModel : TraderPhilPageModel
             return RedirectToSignIn();
 
         var slug = OnboardingPlans.IsValidPlan(plan) ? plan : "trial";
+
+        // The free trial needs no card — just finish onboarding. Same fallback if
+        // Stripe isn't wired up yet, so the flow is never blocked.
+        if (slug == "trial" || !_billing.IsConfigured)
+        {
+            await _onboarding.CompleteAsync(webUserId, slug);
+            return RedirectToPage("/Performance/Index");
+        }
+
+        // Paid plan → hosted Stripe Checkout (subscription mode, with the trial).
+        try
+        {
+            var baseUrl    = $"{Request.Scheme}://{Request.Host}";
+            var successUrl = $"{baseUrl}/onboarding?handler=CheckoutComplete&plan={slug}&session_id={{CHECKOUT_SESSION_ID}}";
+            var cancelUrl  = $"{baseUrl}/onboarding?step={(int)OnboardingStep.Plans}";
+            var url = await _billing.CreateCheckoutSessionAsync(webUserId, slug, successUrl, cancelUrl);
+            return Redirect(url);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Checkout session creation failed for WebUser {WebUserID}, plan {Plan}", webUserId, slug);
+            State        = await _onboarding.GetOrCreateAsync(webUserId);
+            Step         = OnboardingStep.Plans;
+            FlashMessage = "We couldn't open checkout just now. You're on the free trial for now — you can upgrade anytime from your account.";
+            FlashKind    = "warning";
+            return Page();
+        }
+    }
+
+    // Stripe redirects here after a successful Checkout. The subscription itself is
+    // recorded by the webhook; we just mark onboarding finished and move on.
+    public async Task<IActionResult> OnGetCheckoutCompleteAsync(string? plan = null)
+    {
+        if (CurrentWebUserId is not int webUserId)
+            return RedirectToSignIn();
+
+        var slug = OnboardingPlans.IsValidPlan(plan) ? plan! : "captain";
         await _onboarding.CompleteAsync(webUserId, slug);
         return RedirectToPage("/Performance/Index");
     }

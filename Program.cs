@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authentication.OAuth;
 using TraderPhil.V4.Web.Auth;
 using TraderPhil.V4.Web.Data;
+using TraderPhil.V4.Web.Models;
 using TraderPhil.V4.Web.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -145,8 +146,23 @@ builder.Services.AddSingleton<IUserSettingsRepository, UserSettingsRepository>()
 builder.Services.AddSingleton<IProfitTargetsRepository, ProfitTargetsRepository>();
 builder.Services.AddSingleton<IFundingRepository, FundingRepository>();
 builder.Services.AddSingleton<IAccountRepository, AccountRepository>();
-builder.Services.AddSingleton<ISubscriptionRepository, StubSubscriptionRepository>();
 builder.Services.AddSingleton<IOnboardingRepository, OnboardingRepository>();
+
+// -- Stripe Billing + Payments
+builder.Services.Configure<StripeOptions>(builder.Configuration.GetSection(StripeOptions.SectionName));
+var stripeSecret = builder.Configuration["Stripe:SecretKey"];
+if (!string.IsNullOrWhiteSpace(stripeSecret))
+{
+    // Stripe is the source of truth; dbo.Subscriptions is its projection.
+    Stripe.StripeConfiguration.ApiKey = stripeSecret;
+    builder.Services.AddSingleton<ISubscriptionRepository, SqlSubscriptionRepository>();
+}
+else
+{
+    // No keys configured yet — keep the app running with a static free-plan stub.
+    builder.Services.AddSingleton<ISubscriptionRepository, StubSubscriptionRepository>();
+}
+builder.Services.AddSingleton<IStripeBillingService, StripeBillingService>();
 
 // -- Funding cache (deposit methods/addresses). See _Wiring_Notes.txt.
 builder.Services.AddMemoryCache();
@@ -171,6 +187,35 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapRazorPages();
+
+// Stripe webhook. Anonymous + no antiforgery (it's server-to-server, verified by
+// the Stripe-Signature header inside HandleWebhookAsync). Stripe is the source of
+// truth for subscription state; this endpoint projects it into dbo.Subscriptions.
+app.MapPost("/webhooks/stripe", async (HttpRequest request, IStripeBillingService billing, ILoggerFactory lf) =>
+{
+    var logger = lf.CreateLogger("StripeWebhook");
+    using var reader = new StreamReader(request.Body);
+    var json = await reader.ReadToEndAsync();
+    var signature = request.Headers["Stripe-Signature"].ToString();
+
+    try
+    {
+        await billing.HandleWebhookAsync(json, signature);
+        return Results.Ok();
+    }
+    catch (Stripe.StripeException ex)
+    {
+        // Bad signature / malformed event — tell Stripe not to retry indefinitely.
+        logger.LogWarning(ex, "Stripe webhook rejected (signature/verify).");
+        return Results.BadRequest();
+    }
+    catch (Exception ex)
+    {
+        // Processing error — 500 makes Stripe retry with backoff.
+        logger.LogError(ex, "Stripe webhook processing failed.");
+        return Results.StatusCode(StatusCodes.Status500InternalServerError);
+    }
+});
 
 // Convenience: hitting "/" should land on the Performance dashboard.
 app.MapGet("/", context =>

@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc;
 using TraderPhil.V4.Web.Auth;
 using TraderPhil.V4.Web.Data;
 using TraderPhil.V4.Web.Kraken;
+using TraderPhil.V4.Web.Models;
+using TraderPhil.V4.Web.Services;
 
 namespace TraderPhil.V4.Web.Pages.Account;
 
@@ -11,16 +13,19 @@ public class IndexModel : TraderPhilPageModel
 {
     private readonly IAccountRepository _account;
     private readonly ISubscriptionRepository _subscriptions;
+    private readonly IStripeBillingService _billing;
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(
         IWebUserRepository users,
         IAccountRepository account,
         ISubscriptionRepository subscriptions,
+        IStripeBillingService billing,
         ILogger<IndexModel> logger) : base(users)
     {
         _account = account;
         _subscriptions = subscriptions;
+        _billing = billing;
         _logger = logger;
     }
 
@@ -30,6 +35,15 @@ public class IndexModel : TraderPhilPageModel
     public ApiKeyState?     ApiKey          { get; private set; }
     public string           ProgressFreq    { get; private set; } = "Never";
     public SubscriptionInfo Subscription    { get; private set; } = new();
+
+    public StripeSubscriptionRecord?  SubRecord       { get; private set; }
+    public ProtectionModePolicy.Phase ProtectionPhase { get; private set; } = ProtectionModePolicy.Phase.Active;
+
+    public bool HasActiveSubscription =>
+        SubRecord is not null && StripeSubscriptionRecord.IsGoodStanding(SubRecord.Status);
+    public bool HasStripeCustomer => !string.IsNullOrEmpty(SubRecord?.StripeCustomerId);
+    public bool ProtectionActive =>
+        SubRecord?.LapsedAt is not null && ProtectionPhase != ProtectionModePolicy.Phase.Active;
 
     public string? FlashMessage { get; private set; }
     public string? FlashKind    { get; private set; }
@@ -367,11 +381,77 @@ public class IndexModel : TraderPhilPageModel
     }
 
     // ========================================================================
+    // POST - Billing: open the Stripe Customer Portal
+    // ========================================================================
+
+    public async Task<IActionResult> OnPostManageBillingAsync()
+    {
+        if (CurrentWebUserId is not int webUserId)
+            return RedirectToPage("/Account/SignIn");
+
+        try
+        {
+            var returnUrl = $"{Request.Scheme}://{Request.Host}/Account";
+            var url = await _billing.CreatePortalSessionAsync(webUserId, returnUrl);
+            return Redirect(url);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Billing portal session failed for WebUser {WebUserID}", webUserId);
+            FlashMessage = "Couldn't open the billing portal just now. Please try again.";
+            FlashKind = "error";
+            var ueis = await GetMyUeisAsync();
+            if (ueis.Count > 0) CurrentUei = ueis[0];
+            await LoadAllAsync(webUserId);
+            return Page();
+        }
+    }
+
+    // ========================================================================
+    // POST - Billing: start a checkout for a paid plan (upgrade)
+    // ========================================================================
+
+    public async Task<IActionResult> OnPostUpgradeAsync(string plan)
+    {
+        if (CurrentWebUserId is not int webUserId)
+            return RedirectToPage("/Account/SignIn");
+
+        var ueis = await GetMyUeisAsync();
+        if (ueis.Count > 0) CurrentUei = ueis[0];
+
+        if (!_billing.IsConfigured)
+        {
+            FlashMessage = "Billing isn't set up yet. Check back soon.";
+            FlashKind = "warning";
+            await LoadAllAsync(webUserId);
+            return Page();
+        }
+
+        var slug = OnboardingPlans.IsValidPlan(plan) ? plan : "captain";
+        try
+        {
+            var accountUrl = $"{Request.Scheme}://{Request.Host}/Account";
+            var url = await _billing.CreateCheckoutSessionAsync(webUserId, slug, accountUrl, accountUrl);
+            return Redirect(url);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Upgrade checkout failed for WebUser {WebUserID}, plan {Plan}", webUserId, slug);
+            FlashMessage = "Couldn't open checkout just now. Please try again.";
+            FlashKind = "error";
+            await LoadAllAsync(webUserId);
+            return Page();
+        }
+    }
+
+    // ========================================================================
 
     private async Task LoadAllAsync(int webUserId)
     {
         Profile      = await _account.GetProfileAsync(webUserId);
         Subscription = await _subscriptions.GetForUserAsync(webUserId);
+        SubRecord    = await _subscriptions.GetRecordAsync(webUserId);
+        ProtectionPhase = ProtectionModePolicy.PhaseForLapseDate(SubRecord?.LapsedAt, DateTime.UtcNow);
 
         if (CurrentUei > 0)
         {
