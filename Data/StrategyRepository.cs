@@ -23,8 +23,18 @@ public interface IStrategyRepository
     /// </summary>
     Task<int> CreateStrategyAsync(int uei, StrategyCreatePayload payload, int? coinLimit);
 
-    /// <summary>Number of active coins (distinct OPEN, non-closed symbols) for a UEI.</summary>
+    /// <summary>Number of active coins (distinct OPEN, non-closed, non-paused symbols) for a UEI.</summary>
     Task<int> CountActiveCoinsAsync(int uei);
+
+    /// <summary>
+    /// Brings a UEI's coins in line with its plan limit. Keeps the oldest
+    /// <paramref name="coinLimit"/> coins (DCAGroupId ASC) active and pauses the
+    /// rest (full stop: AllowLongs = AllowShorts = 0, prior values snapshotted).
+    /// Coins that come back within the limit (e.g. after an upgrade) are unpaused
+    /// and their prior flags restored. A null limit means unlimited — everything
+    /// paused-by-plan is unpaused. Returns (paused, unpaused) counts.
+    /// </summary>
+    Task<(int Paused, int Unpaused)> ReconcileCoinLimitAsync(int uei, int? coinLimit);
 }
 
 public sealed class StrategyPageData
@@ -62,7 +72,7 @@ public sealed class StrategyRepository : IStrategyRepository
                     d.DCAGroupId, d.UEI, d.LongSymbolID, d.ShortSymbolID,
                     d.DcaLotSize, d.AllowLongs, d.AllowShorts,
                     d.OrderExpirationHours, d.BrokerTTLMinutes,
-                    d.Strategy, d.Status, d.StartTime,
+                    d.Strategy, d.Status, d.StartTime, d.PlanPausedAt,
                     ROW_NUMBER() OVER (PARTITION BY d.UEI, d.LongSymbolID
                                        ORDER BY d.DCAGroupId DESC) AS rn
                 FROM dbo.DCAGroups d
@@ -74,7 +84,7 @@ public sealed class StrategyRepository : IStrategyRepository
                 r.DCAGroupId, r.UEI, r.LongSymbolID, r.ShortSymbolID,
                 r.DcaLotSize, r.AllowLongs, r.AllowShorts,
                 r.OrderExpirationHours, r.BrokerTTLMinutes,
-                r.Strategy, r.Status, r.StartTime,
+                r.Strategy, r.Status, r.StartTime, r.PlanPausedAt,
                 p.DisplayBaseAsset,
                 p.LongSymbol, p.LongOrderMin, p.LongLotDecimals,
                 p.LongLastPrice, p.LongQuoteTime,
@@ -134,7 +144,8 @@ public sealed class StrategyRepository : IStrategyRepository
             WHERE DCAGroupId = @id
               AND UEI = @uei
               AND Status = 'OPEN'
-              AND IsClosed = 0",
+              AND IsClosed = 0
+              AND PlanPausedAt IS NULL",
             new
             {
                 id = dcaGroupId,
@@ -153,8 +164,82 @@ public sealed class StrategyRepository : IStrategyRepository
         return await conn.ExecuteScalarAsync<int>(@"
             SELECT COUNT(DISTINCT LongSymbolID)
             FROM dbo.DCAGroups
-            WHERE UEI = @uei AND Status = 'OPEN' AND IsClosed = 0",
+            WHERE UEI = @uei AND Status = 'OPEN' AND IsClosed = 0 AND PlanPausedAt IS NULL",
             new { uei });
+    }
+
+    public async Task<(int Paused, int Unpaused)> ReconcileCoinLimitAsync(int uei, int? coinLimit)
+    {
+        using var conn = new SqlConnection(_connectionString);
+        await conn.OpenAsync();
+        using var tx = conn.BeginTransaction(IsolationLevel.Serializable);
+
+        try
+        {
+            // Unlimited plan (or no limit): restore everything paused-by-plan.
+            if (coinLimit is not int limit)
+            {
+                var restored = await conn.ExecuteAsync(@"
+                    UPDATE dbo.DCAGroups
+                    SET AllowLongs          = ISNULL(PrePauseAllowLongs, 1),
+                        AllowShorts         = ISNULL(PrePauseAllowShorts, 1),
+                        PrePauseAllowLongs  = NULL,
+                        PrePauseAllowShorts = NULL,
+                        PlanPausedAt        = NULL
+                    WHERE UEI = @uei AND PlanPausedAt IS NOT NULL",
+                    new { uei }, tx);
+
+                tx.Commit();
+                return (0, restored);
+            }
+
+            // Rank live coins oldest-first. The load query keeps a single OPEN row
+            // per (UEI, LongSymbolID) and CreateStrategy forbids duplicates, so
+            // ranking DCAGroups rows directly matches "one coin per row". rn is by
+            // DCAGroupId, which never changes, so the ranking is stable across both
+            // updates in this transaction.
+            const string rankCte = @"
+                ;WITH ranked AS (
+                    SELECT DCAGroupId,
+                           ROW_NUMBER() OVER (ORDER BY DCAGroupId ASC) AS rn
+                    FROM dbo.DCAGroups WITH (UPDLOCK, HOLDLOCK)
+                    WHERE UEI = @uei AND Status = 'OPEN' AND IsClosed = 0
+                )";
+
+            // Pause the excess (rank beyond the limit) that isn't already paused.
+            var paused = await conn.ExecuteAsync(rankCte + @"
+                UPDATE d
+                SET d.PrePauseAllowLongs  = d.AllowLongs,
+                    d.PrePauseAllowShorts = d.AllowShorts,
+                    d.AllowLongs          = 0,
+                    d.AllowShorts         = 0,
+                    d.PlanPausedAt        = GETUTCDATE()
+                FROM dbo.DCAGroups d
+                INNER JOIN ranked r ON r.DCAGroupId = d.DCAGroupId
+                WHERE r.rn > @limit AND d.PlanPausedAt IS NULL",
+                new { uei, limit }, tx);
+
+            // Unpause any now within the limit that were previously paused (upgrade).
+            var unpaused = await conn.ExecuteAsync(rankCte + @"
+                UPDATE d
+                SET d.AllowLongs          = ISNULL(d.PrePauseAllowLongs, 1),
+                    d.AllowShorts         = ISNULL(d.PrePauseAllowShorts, 1),
+                    d.PrePauseAllowLongs  = NULL,
+                    d.PrePauseAllowShorts = NULL,
+                    d.PlanPausedAt        = NULL
+                FROM dbo.DCAGroups d
+                INNER JOIN ranked r ON r.DCAGroupId = d.DCAGroupId
+                WHERE r.rn <= @limit AND d.PlanPausedAt IS NOT NULL",
+                new { uei, limit }, tx);
+
+            tx.Commit();
+            return (paused, unpaused);
+        }
+        catch
+        {
+            tx.Rollback();
+            throw;
+        }
     }
 
     public async Task<int> CreateStrategyAsync(int uei, StrategyCreatePayload payload, int? coinLimit)
@@ -202,7 +287,7 @@ public sealed class StrategyRepository : IStrategyRepository
             {
                 var activeCoins = await conn.ExecuteScalarAsync<int>(@"
                     SELECT COUNT(DISTINCT LongSymbolID) FROM dbo.DCAGroups WITH (UPDLOCK, HOLDLOCK)
-                    WHERE UEI = @uei AND Status = 'OPEN' AND IsClosed = 0",
+                    WHERE UEI = @uei AND Status = 'OPEN' AND IsClosed = 0 AND PlanPausedAt IS NULL",
                     new { uei }, tx);
 
                 if (activeCoins >= limit)

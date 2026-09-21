@@ -41,8 +41,10 @@ the price is marked **default**. That's all Checkout needs.
 -- against the traderPhil DB, in order:
 :r Data/Migrations/001_WebUserOnboarding.sql
 :r Data/Migrations/002_StripeBilling.sql
+:r Data/Migrations/003_CoinLimitPause.sql
 ```
 `002` adds `WebUsers.StripeCustomerId` and the `dbo.Subscriptions` projection table.
+`003` adds the pause-tracking columns on `dbo.DCAGroups` used by coin-limit enforcement.
 
 ## 3. Configure secrets
 
@@ -124,6 +126,25 @@ dotnet user-secrets set "Plans:FreeCoinLimit" "0"   # or "1" for a free single-c
 ```
 
 `Plans:FreeCoinLimit` unset = unlimited for no-plan users; `0` = must subscribe.
+
+### Downgrades — excess coins are paused (not deleted)
+
+If a user ends up over their limit (a downgrade, or lowering `Plans:FreeCoinLimit`),
+the extra coins are **paused**, keeping the **oldest** `DCAGroupId ASC` active:
+
+- Pause = full stop: `AllowLongs` and `AllowShorts` are both set to 0 so the worker
+  opens no new buys or sells for that coin. The prior flag values are snapshotted
+  (`PrePauseAllowLongs/Shorts`) and `PlanPausedAt` is stamped.
+- On **upgrade**, the oldest paused coins are unpaused up to the new limit and their
+  prior flags restored.
+- Paused coins don't count toward the limit, show a "Paused · plan limit" badge, and
+  can't be edited (which would otherwise re-enable trading past the cap).
+- Reconciliation runs automatically on every subscription webhook and, as a
+  self-heal, whenever the user opens the Strategy page
+  (`StrategyRepository.ReconcileCoinLimitAsync`, atomic under a Serializable txn).
+
+Nothing is ever closed or deleted by this — positions are preserved; the coin just
+stops trading until the plan allows it again.
 
 ## How Protection Mode connects
 

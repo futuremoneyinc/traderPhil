@@ -229,6 +229,10 @@
                         {
                             <span class="tp-coin-usage">· @Model.CoinsUsed / @coinLim coins used</span>
                         }
+                        @if (Model.CoinsPaused > 0)
+                        {
+                            <span class="tp-coin-paused">· @Model.CoinsPaused paused (plan limit)</span>
+                        }
                     </div>
                 </div>
                 @{
@@ -425,6 +429,10 @@
                                         <span class="tp-strategy-pair text-secondary">@s.LongSymbol · @s.ShortSymbol</span>
                                     </div>
                                     <div class="tp-strategy-stats">
+                                        @if (s.IsPlanPaused)
+                                        {
+                                            <span class="tp-badge paused">Paused · plan limit</span>
+                                        }
                                         <span class="@longsCls">@longsLabel</span>
                                         <span class="@shortsCls">@shortsLabel</span>
                                         <span class="tp-stat">Lot: <strong>@lotStr</strong><span class="tp-stat-usd">@usdHelp</span></span>
@@ -516,8 +524,15 @@
                             </div>
 
                             <div class="tp-strategy-action">
-                                <button type="button" class="btn btn-outline-light btn-sm tp-edit-btn" data-toggle-edit="true"
-                                        aria-label="Edit @assetUpper strategy">Edit</button>
+                                @if (s.IsPlanPaused)
+                                {
+                                    <a class="btn btn-primary btn-sm" asp-page="/Account/Index">Upgrade to resume</a>
+                                }
+                                else
+                                {
+                                    <button type="button" class="btn btn-outline-light btn-sm tp-edit-btn" data-toggle-edit="true"
+                                            aria-label="Edit @assetUpper strategy">Edit</button>
+                                }
                             </div>
 
                         </article>

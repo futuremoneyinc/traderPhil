@@ -38,6 +38,8 @@ public sealed class StripeBillingService : IStripeBillingService
     private readonly StripeOptions _options;
     private readonly ISubscriptionRepository _subs;
     private readonly IWebUserRepository _users;
+    private readonly IStrategyRepository _strategies;
+    private readonly IPlanEntitlementService _entitlements;
     private readonly ILogger<StripeBillingService> _logger;
 
     // slug -> resolved Price id (from a product's default price). A price change in
@@ -51,12 +53,16 @@ public sealed class StripeBillingService : IStripeBillingService
         IOptions<StripeOptions> options,
         ISubscriptionRepository subs,
         IWebUserRepository users,
+        IStrategyRepository strategies,
+        IPlanEntitlementService entitlements,
         ILogger<StripeBillingService> logger)
     {
-        _options = options.Value;
-        _subs    = subs;
-        _users   = users;
-        _logger  = logger;
+        _options      = options.Value;
+        _subs         = subs;
+        _users        = users;
+        _strategies   = strategies;
+        _entitlements = entitlements;
+        _logger       = logger;
     }
 
     public bool IsConfigured => _options.IsConfigured;
@@ -298,5 +304,19 @@ public sealed class StripeBillingService : IStripeBillingService
         await _subs.UpsertFromWebhookAsync(record);
         _logger.LogInformation("Synced subscription {SubId} for WebUser {WebUserID}: status={Status}, lapsedAt={Lapsed}.",
             sub.Id, webUserId, sub.Status, lapsedAt);
+
+        // Re-align the user's coins with the (possibly changed) plan limit:
+        // a downgrade pauses the newest excess, an upgrade unpauses the oldest.
+        // Never let a reconcile failure fail the webhook.
+        try
+        {
+            var ent = await _entitlements.GetCoinEntitlementAsync(webUserId, isAdmin: false);
+            foreach (var uei in await _users.GetGrantedUeisAsync(webUserId))
+                await _strategies.ReconcileCoinLimitAsync(uei, ent.Limit);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Coin-limit reconcile after subscription sync failed for WebUser {WebUserID}", webUserId);
+        }
     }
 }

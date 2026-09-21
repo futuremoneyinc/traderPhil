@@ -16,6 +16,10 @@ public sealed class StrategyRow
     public string   Status                { get; init; } = "";
     public DateTime StartTime             { get; init; }
 
+    /// <summary>Set when the coin is paused because it exceeds the plan's coin limit.</summary>
+    public DateTime? PlanPausedAt         { get; init; }
+    public bool IsPlanPaused => PlanPausedAt.HasValue;
+
     // From vSymbiCorePairs
     public string?  DisplayBaseAsset      { get; init; }
     public string?  LongSymbol            { get; init; }

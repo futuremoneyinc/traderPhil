@@ -55,7 +55,8 @@ html, body {
 }
 .tp-card-title { font-size: 1.15rem; font-weight: 600; margin: 0; }
 .tp-card-sub   { color: var(--tp-text-muted); font-size: 0.85rem; }
-.tp-coin-usage { color: var(--tp-accent); font-weight: 600; }
+.tp-coin-usage  { color: var(--tp-accent); font-weight: 600; }
+.tp-coin-paused { color: var(--tp-warning); font-weight: 600; }
 
 .tp-headline {
     font-size: 1.6rem;
@@ -280,6 +281,7 @@ html, body {
 }
 .tp-badge.on  { color: var(--tp-positive); border-color: var(--tp-positive); background: rgba(63,185,80,0.08); }
 .tp-badge.off { color: var(--tp-text-muted); border-color: var(--tp-border); background: transparent; }
+.tp-badge.paused { color: var(--tp-warning); border-color: var(--tp-warning); background: rgba(210, 153, 34, 0.10); }
 
 /* Edit-mode swap: display visible by default, form hidden */
 .tp-strategy-display { display: block; }

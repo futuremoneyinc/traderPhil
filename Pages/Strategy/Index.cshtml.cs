@@ -41,6 +41,7 @@ public class IndexModel : TraderPhilPageModel
 
     public CoinEntitlement Coins { get; private set; } = new(null, "");
     public int  CoinsUsed   { get; private set; }
+    public int  CoinsPaused { get; private set; }
     public bool AtCoinLimit => Coins.Limit is int lim && CoinsUsed >= lim;
 
     public string? FlashMessage { get; private set; }
@@ -77,8 +78,17 @@ public class IndexModel : TraderPhilPageModel
     {
         var prep = await PrepareUeiAsync(uei);
         if (prep is not null) return prep;
+        await ReconcileCurrentUeiAsync();
         await LoadAllDataAsync();
         return Page();
+    }
+
+    /// <summary>Self-heal: bring coins in line with the plan limit on page view.</summary>
+    private async Task ReconcileCurrentUeiAsync()
+    {
+        if (CurrentUei <= 0) return;
+        var ent = await _entitlements.GetCoinEntitlementAsync(CurrentWebUserId ?? 0, CurrentUserIsAdmin);
+        await _strategies.ReconcileCoinLimitAsync(CurrentUei, ent.Limit);
     }
 
     public async Task<IActionResult> OnPostEditAsync(int uei, int dcaGroupId, [FromForm] StrategyEditPayload payload)
@@ -300,7 +310,8 @@ public class IndexModel : TraderPhilPageModel
         TreasurySettings  = await _userSettings.GetOrCreateAsync(CurrentUei);
         ProfitTargets     = await _profitTargets.GetSummaryAsync(CurrentUei);
         Coins             = await _entitlements.GetCoinEntitlementAsync(CurrentWebUserId ?? 0, CurrentUserIsAdmin);
-        CoinsUsed         = Strategies.Count;
+        CoinsUsed         = Strategies.Count(s => !s.IsPlanPaused);
+        CoinsPaused       = Strategies.Count(s => s.IsPlanPaused);
     }
 
     private IActionResult Reject(string msg, int dcaGroupId)
