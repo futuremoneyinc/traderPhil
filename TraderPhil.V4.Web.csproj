@@ -13,6 +13,11 @@
     <PackageReference Include="Dapper" Version="2.1.35" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.10" />
     <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
+    <!-- Stripe Billing + Payments. Floating on 47.x so `dotnet restore` picks the
+         latest patch; pin an exact version once restored. On Stripe.net 48+ the
+         only change needed is how the subscription period end is read (see the
+         note in StripeBillingService.MapSubscription). -->
+    <PackageReference Include="Stripe.net" Version="47.*" />
   </ItemGroup>
 
 </Project>
