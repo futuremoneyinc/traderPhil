@@ -440,8 +440,33 @@
 .tp-ob-plan-name { font-weight: 700; font-size: 1.1rem; color: var(--tp-text); }
 .tp-ob-plan-price { margin: 0.5rem 0 0.75rem; }
 .tp-ob-plan-amount { font-size: 2rem; font-weight: 800; color: var(--tp-text); }
+.tp-ob-plan-amount-sm { font-size: 1.25rem; font-weight: 700; color: var(--tp-positive); }
 .tp-ob-plan-cadence { color: var(--tp-text-muted); font-size: 0.85rem; margin-left: 0.25rem; }
+.tp-ob-plan-coins {
+    display: inline-block;
+    align-self: flex-start;
+    padding: 0.25rem 0.7rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.4rem;
+    background: rgba(88, 166, 255, 0.12);
+    color: var(--tp-accent);
+    font-weight: 700;
+    font-size: 0.85rem;
+}
+.tp-ob-plan-guidance { color: var(--tp-text-muted); font-size: 0.82rem; margin-bottom: 0.5rem; }
 .tp-ob-plan-tagline { color: var(--tp-text-muted); font-size: 0.9rem; margin-bottom: 1rem; }
+
+.tp-ob-plans-skip { text-align: center; margin: 1.5rem 0 2.5rem; }
+.tp-ob-linkbtn {
+    background: none;
+    border: none;
+    color: var(--tp-text-muted);
+    text-decoration: underline;
+    cursor: pointer;
+    font-size: 0.92rem;
+    padding: 0.4rem;
+}
+.tp-ob-linkbtn:hover { color: var(--tp-text); }
 .tp-ob-plan-features { list-style: none; padding: 0; margin: 0 0 1.5rem; display: flex; flex-direction: column; gap: 0.5rem; flex: 1; }
 .tp-ob-plan-features li { color: var(--tp-text); font-size: 0.88rem; line-height: 1.4; }
 .tp-ob-plan-btn { width: 100%; }

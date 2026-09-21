@@ -427,7 +427,7 @@ public class IndexModel : TraderPhilPageModel
             return Page();
         }
 
-        var slug = OnboardingPlans.IsValidPlan(plan) ? plan : "captain";
+        var slug = OnboardingPlans.IsValidPlan(plan) ? plan : "basic";
         try
         {
             var accountUrl = $"{Request.Scheme}://{Request.Host}/Account";

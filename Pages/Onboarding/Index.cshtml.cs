@@ -58,6 +58,7 @@ public class IndexModel : TraderPhilPageModel
     public KeyPermissionAudit?   LastAudit       { get; private set; }
     public IReadOnlyList<string> LastIpAllowlist { get; private set; } = Array.Empty<string>();
     public ProfitLadderPreview?  LadderPreview   { get; private set; }
+    public Dictionary<string, PlanPricing?> PlanPricing { get; private set; } = new();
 
     public string? FlashMessage { get; private set; }
     public string? FlashKind    { get; private set; }
@@ -128,6 +129,15 @@ public class IndexModel : TraderPhilPageModel
 
         if (Step == OnboardingStep.Goals)
             LadderPreview = BuildPreview(state);
+
+        if (Step == OnboardingStep.Plans)
+            await LoadPlanPricingAsync();
+    }
+
+    private async Task LoadPlanPricingAsync()
+    {
+        foreach (var p in OnboardingPlans.All)
+            PlanPricing[p.Slug] = await _billing.GetPricingAsync(p.Slug);
     }
 
     private static ProfitLadderPreview BuildPreview(OnboardingState state)
@@ -350,31 +360,37 @@ public class IndexModel : TraderPhilPageModel
         if (CurrentWebUserId is not int webUserId)
             return RedirectToSignIn();
 
-        var slug = OnboardingPlans.IsValidPlan(plan) ? plan : "trial";
-
-        // The free trial needs no card — just finish onboarding. Same fallback if
-        // Stripe isn't wired up yet, so the flow is never blocked.
-        if (slug == "trial" || !_billing.IsConfigured)
+        // "Skip for now" (or any non-tier value) finishes onboarding with no
+        // subscription — they can subscribe later from the Account page.
+        if (!OnboardingPlans.IsValidPlan(plan))
         {
-            await _onboarding.CompleteAsync(webUserId, slug);
+            await _onboarding.CompleteAsync(webUserId, "none");
             return RedirectToPage("/Performance/Index");
         }
 
-        // Paid plan → hosted Stripe Checkout (subscription mode, with the trial).
+        // Stripe not wired up yet — don't block the flow.
+        if (!_billing.IsConfigured)
+        {
+            await _onboarding.CompleteAsync(webUserId, plan);
+            return RedirectToPage("/Performance/Index");
+        }
+
+        // Paid tier → hosted Stripe Checkout (subscription mode, with the trial).
         try
         {
             var baseUrl    = $"{Request.Scheme}://{Request.Host}";
-            var successUrl = $"{baseUrl}/onboarding?handler=CheckoutComplete&plan={slug}&session_id={{CHECKOUT_SESSION_ID}}";
+            var successUrl = $"{baseUrl}/onboarding?handler=CheckoutComplete&plan={plan}&session_id={{CHECKOUT_SESSION_ID}}";
             var cancelUrl  = $"{baseUrl}/onboarding?step={(int)OnboardingStep.Plans}";
-            var url = await _billing.CreateCheckoutSessionAsync(webUserId, slug, successUrl, cancelUrl);
+            var url = await _billing.CreateCheckoutSessionAsync(webUserId, plan, successUrl, cancelUrl);
             return Redirect(url);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Checkout session creation failed for WebUser {WebUserID}, plan {Plan}", webUserId, slug);
+            _logger.LogError(ex, "Checkout session creation failed for WebUser {WebUserID}, plan {Plan}", webUserId, plan);
             State        = await _onboarding.GetOrCreateAsync(webUserId);
             Step         = OnboardingStep.Plans;
-            FlashMessage = "We couldn't open checkout just now. You're on the free trial for now — you can upgrade anytime from your account.";
+            await LoadPlanPricingAsync();
+            FlashMessage = "We couldn't open checkout just now. Please try again, or skip and subscribe later from your account.";
             FlashKind    = "warning";
             return Page();
         }
@@ -387,7 +403,7 @@ public class IndexModel : TraderPhilPageModel
         if (CurrentWebUserId is not int webUserId)
             return RedirectToSignIn();
 
-        var slug = OnboardingPlans.IsValidPlan(plan) ? plan! : "captain";
+        var slug = OnboardingPlans.IsValidPlan(plan) ? plan! : OnboardingPlans.Basic;
         await _onboarding.CompleteAsync(webUserId, slug);
         return RedirectToPage("/Performance/Index");
     }

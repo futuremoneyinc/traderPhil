@@ -10,7 +10,7 @@ namespace TraderPhil.V4.Web.Models;
 ///     "PublishableKey": "pk_test_...",
 ///     "WebhookSecret":  "whsec_...",
 ///     "TrialDays":      14,
-///     "Prices": { "captain": "price_...", "admiral": "price_..." }
+///     "Products": { "starter": "prod_…", "basic": "prod_…", "unlimited": "prod_…" }
 ///   }
 /// </summary>
 public sealed class StripeOptions
@@ -22,26 +22,30 @@ public sealed class StripeOptions
     public string WebhookSecret  { get; set; } = "";
     public int    TrialDays      { get; set; } = 14;
 
-    /// <summary>Plan slug → Stripe Price id. Populated from config "Stripe:Prices".</summary>
-    public Dictionary<string, string> Prices { get; set; } =
+    /// <summary>
+    /// Plan slug → Stripe reference. Each value may be a Product id ("prod_…", the
+    /// common case — its default price is resolved at runtime) or an explicit
+    /// Price id ("price_…"). Populated from config "Stripe:Products".
+    /// </summary>
+    public Dictionary<string, string> Products { get; set; } =
         new(StringComparer.OrdinalIgnoreCase);
 
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(SecretKey) && SecretKey.StartsWith("sk_");
 
-    /// <summary>The Price id for a plan slug, or null if the plan isn't a paid Stripe plan.</summary>
-    public string? PriceIdForPlan(string? planSlug)
+    /// <summary>The configured Stripe reference (prod_… or price_…) for a plan slug.</summary>
+    public string? ProductRefForPlan(string? planSlug)
     {
         if (string.IsNullOrWhiteSpace(planSlug)) return null;
-        return Prices.TryGetValue(planSlug, out var id) && !string.IsNullOrWhiteSpace(id) ? id : null;
+        return Products.TryGetValue(planSlug, out var id) && !string.IsNullOrWhiteSpace(id) ? id : null;
     }
 
-    /// <summary>Reverse lookup: plan slug for a Stripe Price id (used when a webhook arrives).</summary>
-    public string? PlanForPriceId(string? priceId)
+    /// <summary>Reverse lookup: plan slug for a Stripe Product id (used when a webhook arrives).</summary>
+    public string? PlanForProduct(string? productId)
     {
-        if (string.IsNullOrWhiteSpace(priceId)) return null;
-        foreach (var kvp in Prices)
-            if (string.Equals(kvp.Value, priceId, StringComparison.OrdinalIgnoreCase))
+        if (string.IsNullOrWhiteSpace(productId)) return null;
+        foreach (var kvp in Products)
+            if (string.Equals(kvp.Value, productId, StringComparison.OrdinalIgnoreCase))
                 return kvp.Key;
         return null;
     }

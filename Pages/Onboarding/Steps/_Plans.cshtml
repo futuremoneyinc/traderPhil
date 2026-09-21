@@ -5,16 +5,17 @@
 <section class="tp-ob-step tp-ob-plans">
     <header class="tp-ob-step-head tp-text-center">
         <div class="tp-ob-plans-duck" aria-hidden="true"><partial name="_Duck" /></div>
-        <h1 class="tp-ob-step-title">Now that you've seen it — pick your seat</h1>
+        <h1 class="tp-ob-step-title">Now that you've seen it — pick your plan</h1>
         <p class="tp-ob-step-sub">
-            You came for the free trial, and it's right here. Upgrade whenever you're ready; there's no rush,
-            and nothing changes about how TraderPhil trades for you.
+            Plans are sized by how many coins you want TraderPhil trading. Every plan starts with a
+            <strong>14-day free trial</strong> — you won't be charged until it ends, and you can cancel anytime.
         </p>
     </header>
 
     <div class="tp-ob-plan-grid">
         @foreach (var plan in OnboardingPlans.All)
         {
+            var pricing = Model.PlanPricing.TryGetValue(plan.Slug, out var pr) ? pr : null;
             <form method="post" asp-page-handler="ChoosePlan"
                   class="tp-ob-plan-card @(plan.Highlighted ? "highlighted" : "")">
                 <input type="hidden" name="plan" value="@plan.Slug" />
@@ -23,24 +24,41 @@
                     <div class="tp-ob-plan-flag">Most popular</div>
                 }
                 <div class="tp-ob-plan-name">@plan.Name</div>
+
                 <div class="tp-ob-plan-price">
-                    <span class="tp-ob-plan-amount">@plan.Price</span>
-                    <span class="tp-ob-plan-cadence">@plan.Cadence</span>
+                    @if (pricing is not null)
+                    {
+                        <span class="tp-ob-plan-amount">@pricing.Display</span>
+                    }
+                    else
+                    {
+                        <span class="tp-ob-plan-amount tp-ob-plan-amount-sm">14-day free trial</span>
+                    }
                 </div>
+
+                <div class="tp-ob-plan-coins">@plan.CoinLabel</div>
+                <div class="tp-ob-plan-guidance">@plan.AccountGuidance</div>
                 <div class="tp-ob-plan-tagline">@plan.Tagline</div>
+
                 <ul class="tp-ob-plan-features">
                     @foreach (var f in plan.Features)
                     {
                         <li>&#10003; @f</li>
                     }
                 </ul>
+
                 <button type="submit"
-                        class="tp-ob-btn @(plan.Slug == "trial" ? "tp-ob-btn-primary" : "tp-ob-btn-outline") tp-ob-plan-btn">
-                    @(plan.Slug == "trial" ? "Start my free trial" : $"Choose {plan.Name}")
+                        class="tp-ob-btn @(plan.Highlighted ? "tp-ob-btn-primary" : "tp-ob-btn-outline") tp-ob-plan-btn">
+                    Start 14-day free trial
                 </button>
             </form>
         }
     </div>
+
+    <form method="post" asp-page-handler="ChoosePlan" class="tp-ob-plans-skip">
+        <input type="hidden" name="plan" value="skip" />
+        <button type="submit" class="tp-ob-linkbtn">I'll choose later — take me in</button>
+    </form>
 
     @* ---- Protection Mode reassurance ---- *@
     <div class="tp-ob-protect">
@@ -67,8 +85,4 @@
             }
         </ol>
     </div>
-
-    <p class="tp-ob-plans-foot tp-text-center">
-        Not sure yet? <strong>Start the free trial</strong> — you won't be charged, and you can watch it work first.
-    </p>
 </section>

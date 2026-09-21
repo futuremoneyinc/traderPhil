@@ -205,63 +205,96 @@ public sealed class ProfitLadderPreview
 }
 
 /// <summary>
-/// The subscription options Commander Quackers presents in the final step.
-/// Prices are placeholders until a real billing provider is wired up (see
-/// StubSubscriptionRepository) — the shape is what matters.
+/// The subscription tiers Commander Quackers presents in the final step. The
+/// distinguishing entitlement is how many coins a user may run in their profile.
+/// Dollar prices are NOT stored here — they're read live from Stripe (each tier's
+/// product default price) so the UI can never drift from the dashboard.
 /// </summary>
 public sealed class OnboardingPlan
 {
-    public string   Slug       { get; init; } = "";
-    public string   Name       { get; init; } = "";
-    public string   Price      { get; init; } = "";
-    public string   Cadence    { get; init; } = "";
-    public string   Tagline    { get; init; } = "";
-    public string[] Features   { get; init; } = Array.Empty<string>();
-    public bool     Highlighted{ get; init; }
+    public string   Slug            { get; init; } = "";
+    public string   Name            { get; init; } = "";
+    /// <summary>Coins allowed in the profile. null = unlimited.</summary>
+    public int?     CoinLimit       { get; init; }
+    public string   CoinLabel       { get; init; } = "";
+    public string   AccountGuidance { get; init; } = "";
+    public string   Tagline         { get; init; } = "";
+    public string[] Features        { get; init; } = Array.Empty<string>();
+    public bool     Highlighted     { get; init; }
 }
 
 public static class OnboardingPlans
 {
+    public const string Starter   = "starter";
+    public const string Basic     = "basic";
+    public const string Unlimited = "unlimited";
+
     public static readonly OnboardingPlan[] All =
     {
         new()
         {
-            Slug = "trial", Name = "Free Trial", Price = "$0", Cadence = "for 14 days",
-            Tagline = "See it work before you decide.",
+            Slug = Starter, Name = "Starter", CoinLimit = 1, CoinLabel = "1 coin",
+            AccountGuidance = "Best for accounts under $5,000",
+            Tagline = "One coin, full system. Learn the ropes.",
             Features = new[]
             {
-                "Full access to every strategy",
+                "Trade 1 coin",
+                "Your full Profit Ladder, running live",
                 "Live trading on your own Kraken account",
-                "Your Profit Ladder, running for real",
-                "No card required to start",
+                "Starts with a 14-day free trial",
             },
         },
         new()
         {
-            Slug = "captain", Name = "Captain", Price = "$49", Cadence = "/ month", Highlighted = true,
-            Tagline = "For traders who are all-in.",
+            Slug = Basic, Name = "Basic", CoinLimit = 3, CoinLabel = "3 coins", Highlighted = true,
+            AccountGuidance = "Best for accounts $5,000–$20,000",
+            Tagline = "Spread across three coins.",
             Features = new[]
             {
-                "Everything in the trial, uninterrupted",
+                "Trade up to 3 coins",
+                "Everything in Starter",
                 "Priority Protection Mode handling",
-                "Progress reports on your schedule",
-                "Cancel anytime — positions stay safe",
+                "Starts with a 14-day free trial",
             },
         },
         new()
         {
-            Slug = "admiral", Name = "Admiral", Price = "$149", Cadence = "/ month",
-            Tagline = "Maximum firepower.",
+            Slug = Unlimited, Name = "Unlimited", CoinLimit = null, CoinLabel = "Unlimited coins",
+            AccountGuidance = "Best for accounts $15,000+",
+            Tagline = "Every coin, no limits.",
             Features = new[]
             {
-                "Everything in Captain",
-                "Higher concurrent position limits",
-                "Early access to new strategies",
-                "Direct line to the crew",
+                "Trade unlimited coins",
+                "Everything in Basic",
+                "Highest concurrent position limits",
+                "Starts with a 14-day free trial",
             },
         },
     };
 
     public static bool IsValidPlan(string? slug) =>
         All.Any(p => string.Equals(p.Slug, slug, StringComparison.OrdinalIgnoreCase));
+
+    public static OnboardingPlan? Get(string? slug) =>
+        All.FirstOrDefault(p => string.Equals(p.Slug, slug, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>Coins allowed for a plan slug. null = unlimited; 0 = unknown/no plan.</summary>
+    public static int? CoinLimitForPlan(string? slug) => Get(slug)?.CoinLimit;
 }
+
+/// <summary>Live price for a tier, read from Stripe. Amount is in the smallest unit.</summary>
+public sealed record PlanPricing(long AmountMinor, string Currency, string Interval)
+{
+    public string Display
+    {
+        get
+        {
+            var major = AmountMinor / 100m;
+            var sym   = string.Equals(Currency, "usd", StringComparison.OrdinalIgnoreCase) ? "$"
+                      : Currency.ToUpperInvariant() + " ";
+            var each  = string.IsNullOrEmpty(Interval) ? "" : $" / {Interval}";
+            return $"{sym}{major:0.##}{each}";
+        }
+    }
+}
+

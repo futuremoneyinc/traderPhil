@@ -30,7 +30,7 @@ BEGIN
         -- unpaid | incomplete | incomplete_expired | paused.
         [Status]                [varchar](32)  NULL,
 
-        -- Our plan slug (trial | captain | admiral) resolved from the price id.
+        -- Our plan slug (starter | basic | unlimited) resolved from the product id.
         [PlanSlug]              [varchar](40)  NULL,
         [StripePriceId]         [varchar](64)  NULL,
 

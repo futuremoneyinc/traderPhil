@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using Stripe;
 using TraderPhil.V4.Web.Auth;
@@ -22,6 +23,9 @@ public interface IStripeBillingService
     /// <summary>Creates a hosted Checkout session for a paid plan and returns its URL.</summary>
     Task<string> CreateCheckoutSessionAsync(int webUserId, string planSlug, string successUrl, string cancelUrl);
 
+    /// <summary>Live price for a tier (its product's default price), or null if unavailable.</summary>
+    Task<PlanPricing?> GetPricingAsync(string planSlug);
+
     /// <summary>Creates a Billing Portal session and returns its URL.</summary>
     Task<string> CreatePortalSessionAsync(int webUserId, string returnUrl);
 
@@ -35,6 +39,13 @@ public sealed class StripeBillingService : IStripeBillingService
     private readonly ISubscriptionRepository _subs;
     private readonly IWebUserRepository _users;
     private readonly ILogger<StripeBillingService> _logger;
+
+    // slug -> resolved Price id (from a product's default price). A price change in
+    // Stripe produces a new price id, so caching the resolution is safe.
+    private readonly ConcurrentDictionary<string, string> _priceIdCache = new(StringComparer.OrdinalIgnoreCase);
+    // slug -> (pricing, fetchedAtUtc), short TTL so dashboard price edits surface.
+    private readonly ConcurrentDictionary<string, (PlanPricing Pricing, DateTime At)> _pricingCache = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly TimeSpan PricingTtl = TimeSpan.FromMinutes(15);
 
     public StripeBillingService(
         IOptions<StripeOptions> options,
@@ -84,8 +95,7 @@ public sealed class StripeBillingService : IStripeBillingService
     {
         EnsureConfigured();
 
-        var priceId = _options.PriceIdForPlan(planSlug)
-            ?? throw new InvalidOperationException($"No Stripe price configured for plan '{planSlug}'.");
+        var priceId = await ResolvePriceIdAsync(planSlug);
 
         var customerId = await GetOrCreateCustomerAsync(webUserId);
 
@@ -110,6 +120,56 @@ public sealed class StripeBillingService : IStripeBillingService
 
         var session = await new Stripe.Checkout.SessionService().CreateAsync(options);
         return session.Url;
+    }
+
+    /// <summary>
+    /// Resolves the Stripe Price id for a plan. The configured value is either a
+    /// Price id (used as-is) or a Product id (we read its default price).
+    /// </summary>
+    private async Task<string> ResolvePriceIdAsync(string planSlug)
+    {
+        var reference = _options.ProductRefForPlan(planSlug)
+            ?? throw new InvalidOperationException($"No Stripe product/price configured for plan '{planSlug}'.");
+
+        if (reference.StartsWith("price_", StringComparison.OrdinalIgnoreCase))
+            return reference;
+
+        if (_priceIdCache.TryGetValue(planSlug, out var cached))
+            return cached;
+
+        var product = await new ProductService().GetAsync(reference);
+        var priceId = product.DefaultPriceId
+            ?? throw new InvalidOperationException(
+                $"Stripe product '{reference}' (plan '{planSlug}') has no default price. " +
+                "Set a default recurring price on the product in the Stripe dashboard.");
+
+        _priceIdCache[planSlug] = priceId;
+        return priceId;
+    }
+
+    public async Task<PlanPricing?> GetPricingAsync(string planSlug)
+    {
+        if (!_options.IsConfigured || _options.ProductRefForPlan(planSlug) is null) return null;
+
+        if (_pricingCache.TryGetValue(planSlug, out var hit) && DateTime.UtcNow - hit.At < PricingTtl)
+            return hit.Pricing;
+
+        try
+        {
+            var priceId = await ResolvePriceIdAsync(planSlug);
+            var price = await new PriceService().GetAsync(priceId);
+            var pricing = new PlanPricing(
+                AmountMinor: price.UnitAmount ?? 0,
+                Currency:    price.Currency ?? "usd",
+                Interval:    price.Recurring?.Interval ?? "month");
+            _pricingCache[planSlug] = (pricing, DateTime.UtcNow);
+            return pricing;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Couldn't load Stripe pricing for plan {Plan}.", planSlug);
+            return null;
+        }
     }
 
     // -------------------------------------------------------------- Billing Portal
@@ -208,7 +268,9 @@ public sealed class StripeBillingService : IStripeBillingService
 
     private async Task SyncSubscriptionAsync(int webUserId, Subscription sub)
     {
-        var priceId = sub.Items?.Data?.FirstOrDefault()?.Price?.Id;
+        var item      = sub.Items?.Data?.FirstOrDefault();
+        var priceId   = item?.Price?.Id;
+        var productId = item?.Price?.ProductId;
 
         // Preserve the earliest lapse timestamp so Protection Mode's Day-count is
         // measured from when the trouble started, not from the latest webhook.
@@ -224,7 +286,7 @@ public sealed class StripeBillingService : IStripeBillingService
             StripeSubscriptionId = sub.Id,
             Status               = sub.Status,
             StripePriceId        = priceId,
-            PlanSlug             = _options.PlanForPriceId(priceId) ?? existing?.PlanSlug,
+            PlanSlug             = _options.PlanForProduct(productId) ?? existing?.PlanSlug,
             // NOTE (Stripe.net 48+): current_period_end moved to the subscription
             // item. If you upgrade, read `sub.Items.Data[0].CurrentPeriodEnd` here.
             CurrentPeriodEnd     = sub.CurrentPeriodEnd,
