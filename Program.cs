@@ -164,6 +164,9 @@ else
 }
 builder.Services.AddSingleton<IStripeBillingService, StripeBillingService>();
 
+// -- Plan entitlements (coin limits per tier)
+builder.Services.AddSingleton<IPlanEntitlementService, PlanEntitlementService>();
+
 // -- Funding cache (deposit methods/addresses). See _Wiring_Notes.txt.
 builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IFundingCache, FundingCache>();

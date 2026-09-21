@@ -101,13 +101,29 @@ Walk the flow: `/onboarding` → Goals → connect Kraken → … → **Plans**.
 
 ---
 
-## Coin limits — the next step
+## Coin limits (enforced)
 
 The tier → coin allowance lives in `OnboardingPlans` (`CoinLimit`: Starter 1,
-Basic 3, Unlimited null). **Enforcement is not wired yet.** To enforce it, gate
-the Strategy "add a coin" path (`Pages/Strategy` → `IStrategyRepository
-.CreateStrategyAsync`) on the active plan's `CoinLimitForPlan(slug)` vs. the
-user's current coin count. Say the word and I'll implement it.
+Basic 3, Unlimited = unlimited). It's enforced on the Strategy page's "add a coin"
+path:
+
+- `PlanEntitlementService` resolves a user's limit from their active subscription
+  (Starter/Basic/Unlimited; admins are unlimited).
+- The Strategy page shows "N / M coins used" and, at the cap, swaps "+ Add a coin"
+  for an **Upgrade** link and blocks the add form.
+- `StrategyRepository.CreateStrategyAsync` re-checks the limit **atomically inside
+  the Serializable create transaction**, so the cap can't be bypassed by racing
+  requests or a direct POST.
+
+**Users with no subscription** (legacy/admin-provisioned accounts, or someone who
+skipped the plan step) default to **unlimited**, so nothing breaks for existing
+users. To require a subscription before any coin can be added, set a floor:
+
+```bash
+dotnet user-secrets set "Plans:FreeCoinLimit" "0"   # or "1" for a free single-coin tier
+```
+
+`Plans:FreeCoinLimit` unset = unlimited for no-plan users; `0` = must subscribe.
 
 ## How Protection Mode connects
 

@@ -15,7 +15,16 @@ public interface IStrategyRepository
     Task<StrategyPageData> LoadPageDataAsync(int uei);
 
     Task<int> UpdateActiveStrategyAsync(int uei, int dcaGroupId, StrategyEditPayload payload);
-    Task<int> CreateStrategyAsync(int uei, StrategyCreatePayload payload);
+
+    /// <summary>
+    /// Creates a new coin strategy. When <paramref name="coinLimit"/> is non-null,
+    /// the create is rejected (atomically, inside the transaction) if the UEI is
+    /// already at or above that many active coins.
+    /// </summary>
+    Task<int> CreateStrategyAsync(int uei, StrategyCreatePayload payload, int? coinLimit);
+
+    /// <summary>Number of active coins (distinct OPEN, non-closed symbols) for a UEI.</summary>
+    Task<int> CountActiveCoinsAsync(int uei);
 }
 
 public sealed class StrategyPageData
@@ -138,7 +147,17 @@ public sealed class StrategyRepository : IStrategyRepository
             });
     }
 
-    public async Task<int> CreateStrategyAsync(int uei, StrategyCreatePayload payload)
+    public async Task<int> CountActiveCoinsAsync(int uei)
+    {
+        using var conn = new SqlConnection(_connectionString);
+        return await conn.ExecuteScalarAsync<int>(@"
+            SELECT COUNT(DISTINCT LongSymbolID)
+            FROM dbo.DCAGroups
+            WHERE UEI = @uei AND Status = 'OPEN' AND IsClosed = 0",
+            new { uei });
+    }
+
+    public async Task<int> CreateStrategyAsync(int uei, StrategyCreatePayload payload, int? coinLimit)
     {
         using var conn = new SqlConnection(_connectionString);
         await conn.OpenAsync();
@@ -174,6 +193,22 @@ public sealed class StrategyRepository : IStrategyRepository
             if (alreadyActive > 0)
                 throw new InvalidOperationException(
                     $"An active strategy already exists for {pair.DisplayBaseAsset}. Edit it instead.");
+
+            // Plan coin-limit gate. This is a NEW symbol (the check above proves it),
+            // so adding it takes the user from `activeCoins` to `activeCoins + 1`.
+            // Enforce inside the Serializable transaction so two concurrent adds
+            // can't both slip past the limit.
+            if (coinLimit is int limit)
+            {
+                var activeCoins = await conn.ExecuteScalarAsync<int>(@"
+                    SELECT COUNT(DISTINCT LongSymbolID) FROM dbo.DCAGroups WITH (UPDLOCK, HOLDLOCK)
+                    WHERE UEI = @uei AND Status = 'OPEN' AND IsClosed = 0",
+                    new { uei }, tx);
+
+                if (activeCoins >= limit)
+                    throw new InvalidOperationException(
+                        $"Your plan allows {limit} coin{(limit == 1 ? "" : "s")}. Upgrade your plan to add more.");
+            }
 
             var strategyLabel = $"SymbiCore_{pair.DisplayBaseAsset.ToUpperInvariant()}_250";
 

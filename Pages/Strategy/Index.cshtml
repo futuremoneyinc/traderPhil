@@ -223,19 +223,40 @@
             <header class="tp-card-header">
                 <div>
                     <h2 class="tp-card-title">Your strategies</h2>
-                    <div class="tp-card-sub">One per coin · TraderPhil acquires and protects automatically</div>
+                    <div class="tp-card-sub">
+                        One per coin · TraderPhil acquires and protects automatically
+                        @if (Model.Coins.Limit is int coinLim)
+                        {
+                            <span class="tp-coin-usage">· @Model.CoinsUsed / @coinLim coins used</span>
+                        }
+                    </div>
                 </div>
                 @{
                     var addBtnLabel = Model.AddFormOpen ? "Cancel" : "+ Add a coin";
                 }
-                <button type="button" class="btn btn-outline-light btn-sm" data-toggle-add="true">@addBtnLabel</button>
+                @if (Model.AtCoinLimit)
+                {
+                    <a class="btn btn-primary btn-sm" asp-page="/Account/Index">Upgrade to add more</a>
+                }
+                else
+                {
+                    <button type="button" class="btn btn-outline-light btn-sm" data-toggle-add="true">@addBtnLabel</button>
+                }
             </header>
 
             @{
                 var addClass = Model.AddFormOpen ? "tp-add-form open" : "tp-add-form";
             }
             <div class="@addClass" id="addForm">
-                @if (Model.AddableSymbols.Count == 0)
+                @if (Model.AtCoinLimit)
+                {
+                    <div class="tp-empty">
+                        You're using all @Model.CoinsUsed coin@(Model.CoinsUsed == 1 ? "" : "s") allowed on your
+                        @Model.Coins.PlanLabel plan.
+                        <a asp-page="/Account/Index">Upgrade your plan</a> to trade more coins.
+                    </div>
+                }
+                else if (Model.AddableSymbols.Count == 0)
                 {
                     <div class="tp-empty">No coins available to add - you're already trading every supported pair.</div>
                 }

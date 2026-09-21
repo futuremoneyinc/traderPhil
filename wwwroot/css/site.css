@@ -55,6 +55,7 @@ html, body {
 }
 .tp-card-title { font-size: 1.15rem; font-weight: 600; margin: 0; }
 .tp-card-sub   { color: var(--tp-text-muted); font-size: 0.85rem; }
+.tp-coin-usage { color: var(--tp-accent); font-weight: 600; }
 
 .tp-headline {
     font-size: 1.6rem;
