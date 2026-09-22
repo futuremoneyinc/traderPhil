@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using TraderPhil.V4.Web.Auth;
 using TraderPhil.V4.Web.Data;
 using TraderPhil.V4.Web.Models;
+using TraderPhil.V4.Web.Services;
 
 namespace TraderPhil.V4.Web.Pages.Strategy;
 
@@ -12,6 +13,7 @@ public class IndexModel : TraderPhilPageModel
     private readonly IStrategyRepository _strategies;
     private readonly IUserSettingsRepository _userSettings;
     private readonly IProfitTargetsRepository _profitTargets;
+    private readonly IPlanEntitlementService _entitlements;
     private readonly ILogger<IndexModel> _logger;
 
     public IndexModel(
@@ -19,11 +21,13 @@ public class IndexModel : TraderPhilPageModel
         IStrategyRepository strategies,
         IUserSettingsRepository userSettings,
         IProfitTargetsRepository profitTargets,
+        IPlanEntitlementService entitlements,
         ILogger<IndexModel> logger) : base(users)
     {
         _strategies = strategies;
         _userSettings = userSettings;
         _profitTargets = profitTargets;
+        _entitlements = entitlements;
         _logger = logger;
     }
 
@@ -34,6 +38,11 @@ public class IndexModel : TraderPhilPageModel
     public IReadOnlyList<AddableSymbolRow> AddableSymbols { get; private set; } = Array.Empty<AddableSymbolRow>();
     public UserSettingsRow? TreasurySettings { get; private set; }
     public ProfitTargetsSummary? ProfitTargets { get; private set; }
+
+    public CoinEntitlement Coins { get; private set; } = new(null, "");
+    public int  CoinsUsed   { get; private set; }
+    public int  CoinsPaused { get; private set; }
+    public bool AtCoinLimit => Coins.Limit is int lim && CoinsUsed >= lim;
 
     public string? FlashMessage { get; private set; }
     public string? FlashKind    { get; private set; }
@@ -69,8 +78,17 @@ public class IndexModel : TraderPhilPageModel
     {
         var prep = await PrepareUeiAsync(uei);
         if (prep is not null) return prep;
+        await ReconcileCurrentUeiAsync();
         await LoadAllDataAsync();
         return Page();
+    }
+
+    /// <summary>Self-heal: bring coins in line with the plan limit on page view.</summary>
+    private async Task ReconcileCurrentUeiAsync()
+    {
+        if (CurrentUei <= 0) return;
+        var ent = await _entitlements.GetCoinEntitlementAsync(CurrentWebUserId ?? 0, CurrentUserIsAdmin);
+        await _strategies.ReconcileCoinLimitAsync(CurrentUei, ent.Limit);
     }
 
     public async Task<IActionResult> OnPostEditAsync(int uei, int dcaGroupId, [FromForm] StrategyEditPayload payload)
@@ -115,9 +133,20 @@ public class IndexModel : TraderPhilPageModel
         if (!IsValidOrderHours(payload.OrderExpirationHours) || !IsValidBrokerTtl(payload.BrokerTTLMinutes))
             return RejectAdd("Invalid shelf-life selection.");
 
+        // Plan coin-limit gate (friendly message; the repo re-checks atomically).
+        var ent = await _entitlements.GetCoinEntitlementAsync(CurrentWebUserId ?? 0, CurrentUserIsAdmin);
+        if (ent.Limit is int lim)
+        {
+            var used = await _strategies.CountActiveCoinsAsync(uei);
+            if (used >= lim)
+                return RejectAdd(
+                    $"You're using all {lim} coin{(lim == 1 ? "" : "s")} on your {ent.PlanLabel} plan. " +
+                    "Upgrade from your Account page to trade more coins.");
+        }
+
         try
         {
-            await _strategies.CreateStrategyAsync(uei, payload);
+            await _strategies.CreateStrategyAsync(uei, payload, ent.Limit);
             FlashMessage = "Strategy added.";
             FlashKind = "success";
             AddFormOpen = false;
@@ -280,6 +309,9 @@ public class IndexModel : TraderPhilPageModel
         AddableSymbols    = data.Addables;
         TreasurySettings  = await _userSettings.GetOrCreateAsync(CurrentUei);
         ProfitTargets     = await _profitTargets.GetSummaryAsync(CurrentUei);
+        Coins             = await _entitlements.GetCoinEntitlementAsync(CurrentWebUserId ?? 0, CurrentUserIsAdmin);
+        CoinsUsed         = Strategies.Count(s => !s.IsPlanPaused);
+        CoinsPaused       = Strategies.Count(s => s.IsPlanPaused);
     }
 
     private IActionResult Reject(string msg, int dcaGroupId)
